@@ -1,0 +1,35 @@
+[project]
+name = "bourracho"
+version = "0.1.0"
+authors = [{ name = "Vladeptres", email = "feahmpo.92@gmail.com" }]
+
+description = "Ezebarti"
+readme = "README.md"
+requires-python = ">=3.11"
+
+dependencies = [
+    "loguru>=0.7.3",
+    "pydantic>=2.11.7",
+    "pytest>=8.4.1",
+]
+
+[tool.ruff]
+# Apply ruff to all packages in the workspace
+extend-exclude = [".venv", "build", "dist"]
+line-length = 120
+lint.select = ["E", "F", "I", "B"]
+lint.ignore = []
+
+[tool.setuptools]
+include-package-data = true
+packages.find.include = ['bourracho*', "bourracho/*.json"]
+packages.find.exclude = ['bourracho.tests*']
+
+[build-system]
+requires = ["setuptools >= 61.0"]
+build-backend = "setuptools.build_meta"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.1",
+]
