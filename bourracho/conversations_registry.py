@@ -3,7 +3,11 @@ import os
 from os.path import join as pjoin
 from typing import Literal
 
-from bourracho.conversation_store.abstract_conversation_store import AbstractConversationStore
+from loguru import logger
+
+from bourracho.conversation_store.abstract_conversation_store import (
+    AbstractConversationStore,
+)
 from bourracho.conversation_store.json_conversation_store import JsonConversationStore
 from bourracho.models import ConversationMetadata, Message, User
 
@@ -17,15 +21,30 @@ class ConversationsRegistry:
         self.conversation_stores: dict[str, AbstractConversationStore] = {}
         """Dict containing for each conversation an entry conversation_id: MessageStore"""
 
-        self.conversations_registry_filepath = pjoin(self.persistence_dir, "conversations_registry.json")
+        self.conversations_registry_filepath = pjoin(self.persistence_dir, f"registry_id={self.id}.json")
         os.makedirs(self.persistence_dir, exist_ok=True)
         if not os.path.exists(self.conversations_registry_filepath):
             with open(self.conversations_registry_filepath, "w") as f:
-                json.dump([], f)
+                json.dump({}, f)
+        else:
+            self.load_from_json_file()
+
+    def load_from_json_file(self):
+        logger.info(f"Reloading conversation registry from file {self.conversations_registry_filepath}")
+        with open(self.conversations_registry_filepath) as f:
+            persisted_conversations_registry = json.load(f)
+        logger.debug(f"Persisted file: {persisted_conversations_registry}")
+        logger.info(f"Reloading conversations : {persisted_conversations_registry.keys()}")
+        self.conversation_stores = {
+            conversation_id: JsonConversationStore(**conversations_stores)
+            for conversation_id, conversations_stores in persisted_conversations_registry.items()
+        }
 
     def add_conversation(
-        self, conversation_metadata: ConversationMetadata, conversation_store_type: Literal["json"] = "json"
-    ):
+        self,
+        conversation_metadata: ConversationMetadata | dict,
+        conversation_store_type: Literal["json"] = "json",
+    ) -> str:
         if conversation_store_type != "json":
             raise NotImplementedError("Only json Message store is implemented yet.")
 
@@ -40,6 +59,7 @@ class ConversationsRegistry:
         )
         self.conversation_stores[conversation_metadata.id] = conversation_store
         self.serialize()
+        return conversation_metadata.id
 
     def serialize(self) -> None:
         with open(self.conversations_registry_filepath, "w") as f:
@@ -74,3 +94,13 @@ class ConversationsRegistry:
         if conversation_id not in self.conversation_stores:
             raise ValueError(f"Conversation with id {conversation_id} is not among registered conversations.")
         self.conversation_stores[conversation_id].update_metadata(metadata_dict)
+
+    def get_metadata(self, conversation_id: str) -> ConversationMetadata:
+        if conversation_id not in self.conversation_stores:
+            raise ValueError(f"Conversation with id {conversation_id} is not among registered conversations.")
+        return self.conversation_stores[conversation_id].get_metadata()
+
+    def get_users(self, conversation_id: str) -> list[User]:
+        if conversation_id not in self.conversation_stores:
+            raise ValueError(f"Conversation with id {conversation_id} is not among registered conversations.")
+        return self.conversation_stores[conversation_id].get_users()

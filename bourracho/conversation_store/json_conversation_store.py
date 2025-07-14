@@ -4,13 +4,16 @@ from os.path import join as pjoin
 
 from loguru import logger
 
-from bourracho.conversation_store.abstract_conversation_store import AbstractConversationStore
+from bourracho.conversation_store.abstract_conversation_store import (
+    AbstractConversationStore,
+)
 from bourracho.models import ConversationMetadata, Message, User
 
 
 class JsonConversationStore(AbstractConversationStore):
     def __init__(self, db_dir: str, conversation_id: str):
-        self.db_dir = pjoin(db_dir, f"conv_id={conversation_id}")
+        self.conversation_id = conversation_id
+        self.db_dir = db_dir
         self.metadata_filepath = pjoin(self.db_dir, "metadata.json")
         self.users_filepath = pjoin(self.db_dir, "users.json")
         self.messages_filepath = pjoin(self.db_dir, "messages.json")
@@ -21,8 +24,7 @@ class JsonConversationStore(AbstractConversationStore):
     def dump(self) -> dict:
         return {
             "db_dir": self.db_dir,
-            "metadata": self.get_metadata().model_dump_json(),
-            "users": [user.model_dump_json() for user in self.get_users()],
+            "conversation_id": self.conversation_id,
         }
 
     def write_messages(self, messages: list[Message]) -> None:
@@ -52,9 +54,12 @@ class JsonConversationStore(AbstractConversationStore):
 
     def add_user(self, user: User) -> None:
         User.model_validate(user)
-        new_users = self.get_users() + [user.model_dump_json()]
+        existing_users = self.get_users()
+        if any(existing_user.id == user.id for existing_user in existing_users):
+            raise ValueError(f"A user with id {user.id} is already registered in conversation.")
+        new_users = existing_users + [user]
         with open(self.users_filepath, "w") as f:
-            json.dump(new_users, f)
+            json.dump([new_user.model_dump_json() for new_user in new_users], f)
         logger.info(f"Successfully added user {user} to conversation.")
 
     def get_metadata(self) -> ConversationMetadata:
