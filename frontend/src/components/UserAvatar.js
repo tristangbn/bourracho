@@ -3,6 +3,7 @@ import { Avatar, IconButton, Dialog, DialogTitle, DialogContent, TextField, Butt
 import PersonIcon from "@mui/icons-material/Person";
 import { useDispatch, useSelector } from "react-redux";
 import { setUser } from "../store/userSlice";
+import { registerUser } from "../api/conversations";
 
 function UserAvatar() {
   const user = useSelector((state) => state.user);
@@ -14,13 +15,20 @@ function UserAvatar() {
   const handleOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (id && name) {
-      dispatch(setUser({ id, name }));
-      setOpen(false);
+      try {
+        await registerUser({ id, name });
+        dispatch(setUser({ id, name }));
+        setOpen(false);
+      } catch (err) {
+        // Optionally show error
+        alert("Registration failed. Please try again.");
+      }
     }
   };
+
 
   return (
     <Box display="flex" alignItems="center" mb={2}>

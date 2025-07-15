@@ -9,16 +9,16 @@ function ChatWindow({ selectedConversationId, user }) {
 
   // Fetch messages for the selected conversation
   const { data: messages, isLoading, isError } = useQuery(
-    ["messages", selectedConversationId],
-    () => fetchMessages(selectedConversationId),
+    ["messages", user?.id, selectedConversationId],
+    () => fetchMessages(user.id, selectedConversationId),
     {
-      enabled: !!selectedConversationId,
+      enabled: !!selectedConversationId && !!user?.id,
     }
   );
 
   // Mutation for sending messages
   const mutation = useMutation(
-    (msg) => sendMessage(selectedConversationId, msg),
+    (msg) => sendMessage(selectedConversationId, msg, user.id),
     {
       onSuccess: () => {
         queryClient.invalidateQueries(["messages", selectedConversationId]);
@@ -32,8 +32,7 @@ function ChatWindow({ selectedConversationId, user }) {
     if (input.trim() && selectedConversationId && user) {
       mutation.mutate({
         author: user.name,
-        content: input,
-        user_id: user.id,
+        content: input
       });
     }
   };
