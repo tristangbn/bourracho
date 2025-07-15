@@ -1,0 +1,1 @@
+{"id": "default_registry", "persistence_dir": "registry_persistence_dir/registry_id=default_registry", "conversation_stores": {}, "users": {"testset": "{\"id\":\"testset\",\"name\":\"tesdtd\",\"pseudo\":null,\"location\":null,\"is_admin\":false}"}}
