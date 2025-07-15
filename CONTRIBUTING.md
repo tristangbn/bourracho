@@ -39,3 +39,9 @@ To run tests run :
 ```bash
 uv run pytest .
 ```
+
+To run API tests run 
+
+```bash
+uv run manage.py test
+```
