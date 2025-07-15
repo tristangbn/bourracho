@@ -1,6 +1,7 @@
 import axios from "axios";
 
-const API_BASE = "http://localhost:8000/api/";
+const DEFAULT_API_BASE = process.env.NODE_ENV === "production" ? "https://bourracho-production.up.railway.app/api/" : "http://localhost:8000/api/";
+const API_BASE = process.env.REACT_APP_API_BASE || DEFAULT_API_BASE;
 
 /**
  * List all conversations for a user
