@@ -1,8 +1,9 @@
 import uuid
 from datetime import datetime
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import BaseModel
+import emoji as emj
+from pydantic import AfterValidator, BaseModel, field_serializer
 
 
 class User(BaseModel):
@@ -14,8 +15,12 @@ class User(BaseModel):
 
 
 class React(BaseModel):
-    emoji: str
-    issuer: User
+    emoji: Annotated[str, AfterValidator(lambda s: emj.emojize(s))]
+    issuer_id: str
+
+    @field_serializer("emoji")
+    def serialize_emoji(self, emoji: str):
+        return emj.emojize(emoji)
 
 
 class Message(BaseModel):
@@ -23,12 +28,12 @@ class Message(BaseModel):
     issuer_id: str
     id: str = str(uuid.uuid4())
     timestamp: datetime = datetime.now()
-    react: list[React] = []
+    reacts: list[React] = []
 
 
 class ConversationMetadata(BaseModel):
     name: str = ""
-    id: str = str(uuid.uuid4())
+    id: str | None = None
     is_locked: bool = True
 
 

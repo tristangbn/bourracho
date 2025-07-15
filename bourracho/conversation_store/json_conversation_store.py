@@ -7,7 +7,7 @@ from loguru import logger
 from bourracho.conversation_store.abstract_conversation_store import (
     AbstractConversationStore,
 )
-from bourracho.models import ConversationMetadata, Message, User
+from bourracho.models import ConversationMetadata, Message, React
 
 
 class JsonConversationStore(AbstractConversationStore):
@@ -15,7 +15,7 @@ class JsonConversationStore(AbstractConversationStore):
         self.conversation_id = conversation_id
         self.db_dir = db_dir
         self.metadata_filepath = pjoin(self.db_dir, "metadata.json")
-        self.users_filepath = pjoin(self.db_dir, "users.json")
+        self.users_ids_filepath = pjoin(self.db_dir, "users_ids.json")
         self.messages_filepath = pjoin(self.db_dir, "messages.json")
 
         logger.debug(f"Initializing JsonConversationStore at {db_dir}.")
@@ -29,7 +29,7 @@ class JsonConversationStore(AbstractConversationStore):
 
     def write_messages(self, messages: list[Message]) -> None:
         with open(self.messages_filepath, "w") as f:
-            json.dump([message.model_dump_json() for message in messages], f)
+            json.dump([message.model_dump_json() for message in messages], f, ensure_ascii=True)
 
     def add_message(self, message: Message) -> None:
         Message.model_validate(message)
@@ -45,22 +45,31 @@ class JsonConversationStore(AbstractConversationStore):
         with open(self.messages_filepath, "r") as f:
             return [Message.model_validate_json(message) for message in json.load(f)]
 
-    def get_users(self) -> list[User]:
-        if not os.path.exists(self.users_filepath):
-            logger.debug("No user registered for conversation")
-            return []
-        with open(self.users_filepath) as f:
-            return [User.model_validate_json(user) for user in json.load(f)]
+    def add_react(self, react: React, message_id: str) -> None:
+        message = self.get_messages()
+        message_ids = [message.id for message in message]
+        if message_id not in message_ids:
+            raise ValueError(f"Message with id {message_id} is not among registered messages.")
+        message_index = message_ids.index(message_id)
+        message[message_index].reacts.append(react)
+        self.write_messages(message)
+        logger.info(f"Added react {react} to message {message_id}.")
 
-    def add_user(self, user: User) -> None:
-        User.model_validate(user)
-        existing_users = self.get_users()
-        if any(existing_user.id == user.id for existing_user in existing_users):
-            raise ValueError(f"A user with id {user.id} is already registered in conversation.")
-        new_users = existing_users + [user]
-        with open(self.users_filepath, "w") as f:
-            json.dump([new_user.model_dump_json() for new_user in new_users], f)
-        logger.info(f"Successfully added user {user} to conversation.")
+    def get_users_ids(self) -> list[str]:
+        if not os.path.exists(self.users_ids_filepath):
+            logger.debug("No user IDs registered for conversation")
+            return []
+        with open(self.users_ids_filepath) as f:
+            return json.load(f)
+
+    def add_user_id(self, user_id: str) -> None:
+        existing_users_ids = self.get_users_ids()
+        if user_id in existing_users_ids:
+            raise ValueError(f"A user with id {user_id} is already registered in conversation.")
+        new_users_ids = existing_users_ids + [user_id]
+        with open(self.users_ids_filepath, "w") as f:
+            json.dump(new_users_ids, f)
+        logger.info(f"Successfully added user {user_id} to conversation.")
 
     def get_metadata(self) -> ConversationMetadata:
         if not os.path.exists(self.metadata_filepath):

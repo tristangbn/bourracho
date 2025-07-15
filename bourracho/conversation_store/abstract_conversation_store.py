@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from bourracho.models import ConversationMetadata, Message, User
+from bourracho.models import ConversationMetadata, Message
 
 
 class AbstractConversationStore(ABC):
@@ -25,12 +25,12 @@ class AbstractConversationStore(ABC):
         pass
 
     @abstractmethod
-    def get_users(self) -> list[User]:
+    def get_users_ids(self) -> list[str]:
         """Retrieve all users for the conversation."""
         pass
 
     @abstractmethod
-    def add_user(self, user: User) -> None:
+    def add_user_id(self, user_id: str) -> None:
         """Add a user to the conversation."""
         pass
 
