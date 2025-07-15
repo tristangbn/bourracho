@@ -5,7 +5,7 @@ from datetime import datetime
 import pytest
 
 from bourracho.conversation_store.json_conversation_store import JsonConversationStore
-from bourracho.models import ConversationMetadata, Message, User
+from bourracho.models import ConversationMetadata, Message, React, User
 
 
 @pytest.fixture
@@ -22,7 +22,7 @@ def sample_user():
 
 @pytest.fixture
 def sample_message(sample_user):
-    return Message(id="m1", content="Hello", timestamp=datetime.now(), issuer=sample_user)
+    return Message(id="m1", content="Hello", timestamp=datetime.now(), issuer_id=sample_user.id)
 
 
 @pytest.fixture
@@ -33,11 +33,13 @@ def sample_metadata():
 def test_add_and_get_message(temp_db_dir, sample_message):
     store = JsonConversationStore(temp_db_dir, "c1")
     store.add_message(sample_message)
+    store.add_react(React(emoji="👍", issuer_id="user1"), message_id="m1")
     messages = store.get_messages()
     assert len(messages) == 1
     assert messages[0].id == sample_message.id
     assert messages[0].content == sample_message.content
-    assert messages[0].issuer.id == sample_message.issuer.id
+    assert messages[0].reacts == [React(emoji="👍", issuer_id="user1")]
+    assert messages[0].issuer_id == sample_message.issuer_id
 
 
 def test_get_messages_empty(temp_db_dir):
@@ -48,14 +50,14 @@ def test_get_messages_empty(temp_db_dir):
 
 def test_add_and_get_user(temp_db_dir, sample_user):
     store = JsonConversationStore(temp_db_dir, "c1")
-    store.add_user(sample_user)
-    users = store.get_users()
-    assert any(u.id == sample_user.id for u in users)
+    store.add_user_id(sample_user.id)
+    users = store.get_users_ids()
+    assert users == [sample_user.id]
 
 
 def test_get_users_empty(temp_db_dir):
     store = JsonConversationStore(temp_db_dir, "c1")
-    users = store.get_users()
+    users = store.get_users_ids()
     assert users == []
 
 
@@ -82,8 +84,7 @@ def test_update_metadata(temp_db_dir, sample_metadata):
 def test_dump(temp_db_dir, sample_user, sample_metadata):
     store = JsonConversationStore(temp_db_dir, "c1")
     store.write_metadata(sample_metadata)
-    store.add_user(sample_user)
+    store.add_user_id(sample_user.id)
     d = store.dump()
     assert d["db_dir"] == store.db_dir
-    assert "metadata" in d
-    assert "users" in d
+    assert d["conversation_id"] == "c1"
