@@ -5,4 +5,4 @@
 *__pycache__*
 *egg-info
 
-frontend/node_modules
+node_modules
