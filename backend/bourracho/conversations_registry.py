@@ -64,7 +64,8 @@ class ConversationsRegistry:
         if not user.id:
             raise ValueError("User ID is required to register user.")
         if user.id in self.users:
-            raise ValueError(f"User with id {user.id} is already registered in conversation.")
+            logger.warning(f"User with id {user.id} is already registered in conversation.")
+            return
         self.users[user.id] = user
         self.serialize()
         logger.success(f"User {user} successfully registered.")
@@ -136,7 +137,7 @@ class ConversationsRegistry:
         self.conversation_stores[conversation_id].add_message(message)
         logger.success(f"Message {message} successfully added to conversation {conversation_id}.")
 
-    def add_react(self, react: React, conversation_id: str, message_id: str, user_id: str):
+    def add_react(self, react: React, conversation_id: str, message_id: str):
         if conversation_id not in self.conversation_stores:
             raise ValueError(f"Conversation with id {conversation_id} is not among registered conversations.")
         self.conversation_stores[conversation_id].add_react(react, message_id=message_id)

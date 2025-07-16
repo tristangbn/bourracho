@@ -65,7 +65,8 @@ class JsonConversationStore(AbstractConversationStore):
     def add_user_id(self, user_id: str) -> None:
         existing_users_ids = self.get_users_ids()
         if user_id in existing_users_ids:
-            raise ValueError(f"A user with id {user_id} is already registered in conversation.")
+            logger.warning(f"A user with id {user_id} is already registered in conversation.")
+            return
         new_users_ids = existing_users_ids + [user_id]
         with open(self.users_ids_filepath, "w") as f:
             json.dump(new_users_ids, f)
@@ -73,6 +74,7 @@ class JsonConversationStore(AbstractConversationStore):
 
     def get_metadata(self) -> ConversationMetadata:
         if not os.path.exists(self.metadata_filepath):
+            logger.debug("No metadata registered for conversation")
             return ConversationMetadata()
         with open(self.metadata_filepath) as f:
             return ConversationMetadata.model_validate(json.load(f))

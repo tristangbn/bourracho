@@ -1,0 +1,1 @@
+{"id": "267f6", "persistence_dir": "tmp/registry_persistence_dir/registry_id=267f6", "conversation_stores": {"YS6MVW": {"db_dir": "tmp/registry_persistence_dir/registry_id=267f6/YS6MVW", "conversation_id": "YS6MVW"}}, "users": {"user_test_1": "{\"id\":\"user_test_1\",\"name\":\"Test User\",\"pseudo\":null,\"location\":null,\"is_admin\":true}"}}

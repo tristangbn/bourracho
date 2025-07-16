@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "conversations_api",
+    "rest_framework_swagger",
 ]
 
 MIDDLEWARE = [

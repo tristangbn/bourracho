@@ -16,7 +16,7 @@ class User(BaseModel):
 
 class React(BaseModel):
     emoji: Annotated[str, AfterValidator(lambda s: emj.emojize(s))]
-    issuer_id: str
+    issuer_id: str | None = None
 
     @field_serializer("emoji")
     def serialize_emoji(self, emoji: str):
@@ -25,9 +25,9 @@ class React(BaseModel):
 
 class Message(BaseModel):
     content: str
-    issuer_id: str
-    id: str = str(uuid.uuid4())
-    timestamp: datetime = datetime.now()
+    issuer_id: str | None = None
+    id: str | None = None
+    timestamp: datetime | None = None
     reacts: list[React] = []
 
 
