@@ -12,7 +12,7 @@ from bourracho.conversations_registry import ConversationsRegistry
 from bourracho.models import ConversationMetadata, ConversationStoresModel, Message, React, User
 from conversations_api import config
 
-os.makedirs(config.REGISTRY_PERSISTENCE_DIR, exist_ok=True)
+
 registry = ConversationsRegistry(
     conversations_registry_id=config.REGISTRY_ID,
     persistence_dir=config.REGISTRY_PERSISTENCE_DIR,
