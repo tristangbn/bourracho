@@ -29,8 +29,6 @@ jobs:
         version: "0.7.21"
     - name: "Set up Python"
       uses: actions/setup-python@v5
-      with:
-        python-version-file: "pyproject.toml"
     - name: Install Dependencies
       run: uv sync --locked --all-extras --dev
     - name: Run package Tests
