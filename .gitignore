@@ -1,8 +1,13 @@
+## Environment
+.vscode
+.env
+.venv
+
+## Python
 .pytest_cache
 .ruff_cache
-.venv
-.vscode
 *__pycache__*
 *egg-info
 
+## Node
 node_modules

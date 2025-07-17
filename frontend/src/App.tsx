@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react'
+
+import { client } from '@/api/generated/client.gen'
 import { ThemeProvider } from '@/components/theme-provider'
 import { Toaster } from '@/components/ui/sonner'
 import AppHeader from '@/components/layout/AppHeader'
@@ -7,6 +9,10 @@ import LoginDialog from '@/components/auth/LoginDialog'
 import { useAuth } from '@/hooks/useAuth'
 
 import './App.css'
+
+client.setConfig({
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000', // Fallback
+})
 
 function App() {
   const { user, login, logout, isLoading } = useAuth()
