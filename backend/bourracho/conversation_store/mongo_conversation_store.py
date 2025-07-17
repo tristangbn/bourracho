@@ -4,18 +4,22 @@ from loguru import logger
 from pymongo import MongoClient
 
 from bourracho.conversation_store.abstract_conversation_store import AbstractConversationStore
-from bourracho.models import ConversationMetadata, Message, React
+from bourracho.models import ConversationMetadata, Message, MongoConversationStoreModel, React
 
 
 class MongoConversationStore(AbstractConversationStore):
-    def __init__(self, db_uri: str, db_name: str, conversation_id: str):
+    def __init__(self, db_uri: str, conversation_id: str):
         self.conversation_id = conversation_id
         self.client = MongoClient(db_uri)
-        self.db = self.client[db_name]
+        self.db = self.client[self.conversation_id]
         self.messages_col = self.db[f"messages_{conversation_id}"]
         self.users_col = self.db[f"users_{conversation_id}"]
         self.metadata_col = self.db[f"metadata_{conversation_id}"]
         logger.debug(f"Initialized MongoConversationStore for conversation {conversation_id}")
+
+    @classmethod
+    def from_model(cls, model: MongoConversationStoreModel):
+        return MongoConversationStore(model.db_uri, model.conversation_id)
 
     def write_messages(self, messages: List[Message]) -> None:
         self.messages_col.delete_many({})

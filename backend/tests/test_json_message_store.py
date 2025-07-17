@@ -79,12 +79,3 @@ def test_update_metadata(temp_db_dir, sample_metadata):
     store.update_metadata({"name": "Updated Name"})
     meta = store.get_metadata()
     assert meta.name == "Updated Name"
-
-
-def test_dump(temp_db_dir, sample_user, sample_metadata):
-    store = JsonConversationStore(temp_db_dir, "c1")
-    store.write_metadata(sample_metadata)
-    store.add_user_id(sample_user.id)
-    d = store.dump()
-    assert d["db_dir"] == store.db_dir
-    assert d["conversation_id"] == "c1"

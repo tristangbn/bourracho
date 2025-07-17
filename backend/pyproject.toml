@@ -18,6 +18,7 @@ dependencies = [
     "pydantic>=2.11.7",
     "pymongo>=4.13.2",
     "pytest>=8.4.1",
+    "unittest-parametrize>=1.6.0",
 ]
 
 [tool.ruff]

@@ -3,19 +3,16 @@ import os
 import shutil
 import uuid
 
-from django.test import Client, TestCase
-
-from conversations_api import config
-
-config.REGISTRY_PERSISTENCE_DIR = "tmp/registry_persistence_dir/"
-
-config.REGISTRY_ID = str(uuid.uuid4())[:5]
-if os.path.isdir(config.REGISTRY_PERSISTENCE_DIR):
-    shutil.rmtree(config.REGISTRY_PERSISTENCE_DIR)
+from django.test import Client
+from unittest_parametrize import ParametrizedTestCase
 
 
-class ConversationsApiTests(TestCase):
+class ConversationsApiTests(ParametrizedTestCase):
     def setUp(self):
+        os.environ["REGISTRY_PERSISTENCE_DIR"] = "tmp/registry_persistence_dir/" + str(uuid.uuid4())[:5]
+        os.environ["REGISTRY_ID"] = str(uuid.uuid4())[:5]
+        if os.path.isdir(os.environ["REGISTRY_PERSISTENCE_DIR"]):
+            shutil.rmtree(os.environ["REGISTRY_PERSISTENCE_DIR"])
         self.client = Client()
         self.api_prefix = "/api/"
 
@@ -27,12 +24,14 @@ class ConversationsApiTests(TestCase):
         # Create conversation
         resp = self.client.post(
             f"{self.api_prefix}conversations/{user_test['id']}/create",
-            data=json.dumps({"name": "Test", "id": "AAAA"}),
+            data=json.dumps({"name": "Test"}),
             content_type="application/json",
         )
         self.assertEqual(resp.status_code, 200)
         self.assertIn("conversation_id", resp.json())
-        self.conversation_id = resp.json()["conversation_id"]
+        self.assertTrue("conversation_id" in resp.json())
+        conversation_id = resp.json()["conversation_id"]
+        self.assertTrue(len(conversation_id) == 6)
 
     def test_join_conversation(self):
         user_test_1 = {"id": "user_test_1", "name": "Test User", "is_admin": True}
@@ -44,7 +43,7 @@ class ConversationsApiTests(TestCase):
         # Create conversation
         resp = self.client.post(
             f"{self.api_prefix}conversations/{user_test_1['id']}/create",
-            data=json.dumps({"name": "Test", "id": "BBBB"}),
+            data=json.dumps({"name": "Test"}),
             content_type="application/json",
         )
         self.assertEqual(resp.status_code, 200)
@@ -78,7 +77,7 @@ class ConversationsApiTests(TestCase):
         # Create conversation
         resp = self.client.post(
             f"{self.api_prefix}conversations/{user_test_1['id']}/create",
-            data=json.dumps({"name": "Test", "id": "CCCC"}),
+            data=json.dumps({"name": "Test"}),
             content_type="application/json",
         )
         self.assertEqual(resp.status_code, 200)

@@ -3,26 +3,34 @@ import os
 import random
 import string
 from os.path import join as pjoin
-from typing import Literal
 
 from loguru import logger
+from pydantic import TypeAdapter
 
 from bourracho.conversation_store.abstract_conversation_store import (
     AbstractConversationStore,
 )
 from bourracho.conversation_store.json_conversation_store import JsonConversationStore
-from bourracho.models import ConversationMetadata, Message, React, User
+from bourracho.conversation_store.mongo_conversation_store import MongoConversationStore
+from bourracho.models import ConversationMetadata, ConversationStoresModel, Message, React, User
+
+conversation_model_to_store = {
+    "json": JsonConversationStore,
+    "mongo_db": MongoConversationStore,
+}
 
 
 class ConversationsRegistry:
-    def __init__(self, conversations_registry_id: str, persistence_dir: str, users: dict[str, User] | None = None):
+    def __init__(self, conversations_registry_id: str, persistence_dir: str):
         self.id: str = conversations_registry_id
         """"Unique identifier for the conversations registry"""
         self.persistence_dir: str = pjoin(persistence_dir, f"registry_id={self.id}")
         """Dir path to were every information about conversations should be stored"""
         self.conversation_stores: dict[str, AbstractConversationStore] = {}
-        """Dict containing for each conversation an entry conversation_id: MessageStore"""
-        self.users: dict[str, User] = users or {}
+        """Dict containing for each conversation an entry conversation_id: ConversationStore"""
+        self.conversation_stores_models: dict[str, ConversationStoresModel] = {}
+        """Dict containing for each conversation an entry conversation_id: ConversationStoresModel"""
+        self.users: dict[str, User] = {}
         """Dict containing for each user an entry user_id: User"""
 
         self.conversations_registry_filepath = pjoin(self.persistence_dir, "information.json")
@@ -40,9 +48,15 @@ class ConversationsRegistry:
             return
         logger.debug(f"Persisted file: {persisted_conversations_registry}")
         logger.info(f"Reloading conversations : {persisted_conversations_registry['conversation_stores'].keys()}")
-        self.conversation_stores = {
-            conversation_id: JsonConversationStore(**conversations_stores)
+        self.conversation_stores_models = {
+            conversation_id: TypeAdapter(ConversationStoresModel).validate_json(conversations_stores)
             for conversation_id, conversations_stores in persisted_conversations_registry["conversation_stores"].items()
+        }
+        self.conversation_stores = {
+            conversation_id: conversation_model_to_store[conversation_store_model.type].from_model(
+                conversation_store_model
+            )
+            for conversation_id, conversation_store_model in self.conversation_stores_models.items()
         }
         self.users = {
             user_id: User.model_validate_json(user)
@@ -54,7 +68,7 @@ class ConversationsRegistry:
         d = {
             "id": self.id,
             "persistence_dir": self.persistence_dir,
-            "conversation_stores": {k: v.dump() for k, v in self.conversation_stores.items()},
+            "conversation_stores": {k: v.model_dump_json() for k, v in self.conversation_stores_models.items()},
             "users": {k: v.model_dump_json() for k, v in self.users.items()},
         }
         with open(self.conversations_registry_filepath, "w") as f:
@@ -75,11 +89,15 @@ class ConversationsRegistry:
             raise ValueError(f"User with id {user_id} is not among registered users.")
         return self.users[user_id]
 
-    def create_conversation(self, user_id: str, metadata: ConversationMetadata) -> str:
+    def create_conversation(
+        self, user_id: str, metadata: ConversationMetadata, conversation_store_model: ConversationStoresModel
+    ) -> str:
         if not user_id:
             raise ValueError("User ID is required to create conversation.")
         metadata = ConversationMetadata.model_validate(metadata)
-        conversation_id = self.add_conversation(conversation_metadata=metadata)
+        conversation_id = self.add_conversation(
+            conversation_metadata=metadata, conversation_store_model=conversation_store_model
+        )
         self.add_user_id_to_conversation(conversation_id=conversation_id, user_id=user_id)
         return conversation_id
 
@@ -104,11 +122,8 @@ class ConversationsRegistry:
     def add_conversation(
         self,
         conversation_metadata: ConversationMetadata | dict,
-        conversation_store_type: Literal["json"] = "json",
+        conversation_store_model: ConversationStoresModel,
     ) -> str:
-        if conversation_store_type != "json":
-            raise NotImplementedError("Only json Message store is implemented yet.")
-
         conversation_metadata = conversation_metadata or ConversationMetadata()
         conversation_metadata.id = conversation_metadata.id or "".join(
             random.choices(string.ascii_uppercase + string.digits, k=6)
@@ -117,19 +132,16 @@ class ConversationsRegistry:
             raise ValueError(
                 f"Conversation with id {conversation_metadata.id} is already among implemented conversations."
             )
-
-        conversation_store = JsonConversationStore(
-            db_dir=f"{self.persistence_dir}/{conversation_metadata.id}", conversation_id=conversation_metadata.id
+        conversation_store_model.conversation_id = conversation_metadata.id
+        conversation_store = conversation_model_to_store[conversation_store_model.type].from_model(
+            conversation_store_model
         )
-        self.conversation_stores[conversation_metadata.id] = conversation_store
         conversation_store.write_metadata(conversation_metadata)
+        self.conversation_stores[conversation_metadata.id] = conversation_store
+        self.conversation_stores_models[conversation_metadata.id] = conversation_store_model
         self.serialize()
         logger.success(f"Conversation {conversation_metadata} successfully added.")
         return conversation_metadata.id
-
-    def get_all_conversations(self):
-        logger.info(f"Returning all conversations: {self.conversation_stores.keys()}")
-        return self.conversation_stores
 
     def add_message(self, message: Message, conversation_id: str):
         if conversation_id not in self.conversation_stores:
@@ -174,4 +186,4 @@ class ConversationsRegistry:
     def get_users(self, conversation_id: str) -> list[User]:
         if conversation_id not in self.conversation_stores:
             raise ValueError(f"Conversation with id {conversation_id} is not among registered conversations.")
-        return self.conversation_stores[conversation_id].get_users()
+        return [user for user in self.users if user in self.conversation_stores[conversation_id].get_users_ids()]

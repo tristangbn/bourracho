@@ -1,9 +1,8 @@
-import uuid
 from datetime import datetime
 from typing import Annotated, Literal
 
 import emoji as emj
-from pydantic import AfterValidator, BaseModel, field_serializer
+from pydantic import AfterValidator, BaseModel, Discriminator, field_serializer
 
 
 class User(BaseModel):
@@ -42,7 +41,16 @@ class Conversation(BaseModel):
     messages: list[Message] = []
 
 
-class JsonMessageStore(BaseModel):
+class JsonConversationStoreModel(BaseModel):
     type: Literal["json"] = "json"
-    dir_path: str
-    id: str = str(uuid.uuid4())
+    db_dir: str
+    conversation_id: str | None = None
+
+
+class MongoConversationStoreModel(BaseModel):
+    type: Literal["mongo_db"] = "mongo_db"
+    db_uri: str
+    conversation_id: str | None = None
+
+
+ConversationStoresModel = Annotated[JsonConversationStoreModel | MongoConversationStoreModel, Discriminator("type")]

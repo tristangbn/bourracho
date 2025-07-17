@@ -1,9 +1,8 @@
-import uuid
+import random
+import string
 
 import emoji as emj
-import mongomock
 import pytest
-from pymongo import MongoClient
 
 from bourracho.conversation_store.mongo_conversation_store import MongoConversationStore
 from bourracho.models import ConversationMetadata, Message, React
@@ -12,37 +11,9 @@ MONGO_TEST_URI = "mongodb://localhost:27017/"
 MONGO_TEST_DB = "bourracho_test"
 
 
-@pytest.fixture(scope="session")
-def mongo_client():
-    try:
-        client = MongoClient(MONGO_TEST_URI, serverSelectionTimeoutMS=2000)
-        client.server_info()
-        yield client
-    except Exception:
-        # Use mongomock as a fallback
-        yield mongomock.MongoClient()
-
-
-@pytest.fixture(scope="function")
-def store(mongo_client):
-    conversation_id = str(uuid.uuid4())
-
-    # Patch MongoConversationStore to use the provided client
-    class PatchedMongoConversationStore(MongoConversationStore):
-        def __init__(self, client, db_name, conversation_id):
-            self.conversation_id = conversation_id
-            self.client = client
-            self.db = self.client[db_name]
-            self.messages_col = self.db[f"messages_{conversation_id}"]
-            self.users_col = self.db[f"users_{conversation_id}"]
-            self.metadata_col = self.db[f"metadata_{conversation_id}"]
-
-    store = PatchedMongoConversationStore(mongo_client, MONGO_TEST_DB, conversation_id)
-    yield store
-    db = mongo_client[MONGO_TEST_DB]
-    db.drop_collection(f"messages_{conversation_id}")
-    db.drop_collection(f"users_{conversation_id}")
-    db.drop_collection(f"metadata_{conversation_id}")
+@pytest.fixture
+def store():
+    return MongoConversationStore(MONGO_TEST_URI, "".join(random.choices(string.ascii_letters, k=4)))
 
 
 def test_write_and_get_messages(store):
