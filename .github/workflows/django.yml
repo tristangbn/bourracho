@@ -17,7 +17,11 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-
+    - name: Setup environment
+      run: |
+        echo "REGISTRY_PERSISTENCE_DIR=${{ env.REGISTRY_PERSISTENCE_DIR }}" >> $GITHUB_ENV
+        echo "REGISTRY_ID=${{ env.REGISTRY_ID }}" >> $GITHUB_ENV
+        cd backend
     - name: Install uv
       uses: astral-sh/setup-uv@v6
       with:
@@ -26,10 +30,13 @@ jobs:
     - name: "Set up Python"
       uses: actions/setup-python@v5
       with:
-        python-version-file: "backend/pyproject.toml"
+        python-version-file: "pyproject.toml"
     - name: Install Dependencies
       run: uv sync --locked --all-extras --dev
     - name: Run package Tests
-      run: uv run pytest backend
+      run: uv run pytest
     - name: Run API Tests
-      run: uv run backend/manage.py test
+      run: uv run manage.py test
+    - name: Clean up
+      run: |
+        cd ..
