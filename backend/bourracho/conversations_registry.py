@@ -24,7 +24,7 @@ class ConversationsRegistry:
     def __init__(self, conversations_registry_id: str, persistence_dir: str):
         self.id: str = conversations_registry_id
         """"Unique identifier for the conversations registry"""
-        self.persistence_dir: str = pjoin(persistence_dir, f"registry_id={self.id}")
+        self.persistence_dir: str = pjoin(os.path.abspath(persistence_dir), f"registry_id={self.id}")
         """Dir path to were every information about conversations should be stored"""
         self.conversation_stores: dict[str, AbstractConversationStore] = {}
         """Dict containing for each conversation an entry conversation_id: ConversationStore"""
@@ -34,7 +34,6 @@ class ConversationsRegistry:
         """Dict containing for each user an entry user_id: User"""
 
         self.conversations_registry_filepath = pjoin(self.persistence_dir, "information.json")
-        os.makedirs(self.persistence_dir, exist_ok=True)
         if not os.path.exists(self.conversations_registry_filepath):
             self.serialize()
         else:
@@ -64,13 +63,14 @@ class ConversationsRegistry:
         }
 
     def serialize(self) -> None:
-        logger.info(f"Serializing conversation registry to file {self.conversations_registry_filepath}")
         d = {
             "id": self.id,
             "persistence_dir": self.persistence_dir,
             "conversation_stores": {k: v.model_dump_json() for k, v in self.conversation_stores_models.items()},
             "users": {k: v.model_dump_json() for k, v in self.users.items()},
         }
+        logger.info(f"Serializing conversation registry to file {self.conversations_registry_filepath}")
+        os.makedirs(self.persistence_dir, exist_ok=True)
         with open(self.conversations_registry_filepath, "w") as f:
             json.dump(d, f)
 
