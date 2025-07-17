@@ -3,6 +3,7 @@ from typing import List
 from loguru import logger
 from pymongo import MongoClient
 
+from bourracho import config
 from bourracho.conversation_store.abstract_conversation_store import AbstractConversationStore
 from bourracho.models import ConversationMetadata, Message, MongoConversationStoreModel, React
 
@@ -10,7 +11,9 @@ from bourracho.models import ConversationMetadata, Message, MongoConversationSto
 class MongoConversationStore(AbstractConversationStore):
     def __init__(self, db_uri: str, conversation_id: str):
         self.conversation_id = conversation_id
-        self.client = MongoClient(db_uri)
+        self.client = MongoClient(
+            config.MONGO_DB_URL, username=config.MONGO_DB_USERNAME, password=config.MONGO_DB_PASSWORD
+        )
         self.db = self.client[self.conversation_id]
         self.messages_col = self.db[f"messages_{conversation_id}"]
         self.users_col = self.db[f"users_{conversation_id}"]
