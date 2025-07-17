@@ -16,9 +16,7 @@ dependencies = [
     "loguru>=0.7.3",
     "mongomock>=4.3.0",
     "pydantic>=2.11.7",
-    "pymongo>=4.13.2",
-    "pytest>=8.4.1",
-]
+    "pymongo>=4.13.2",]
 
 [tool.ruff]
 # Apply ruff to all packages in the workspace
@@ -39,4 +37,5 @@ build-backend = "setuptools.build_meta"
 [dependency-groups]
 dev = [
     "pytest>=8.4.1",
+    
 ]
