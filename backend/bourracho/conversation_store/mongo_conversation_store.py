@@ -11,8 +11,11 @@ from bourracho.models import ConversationMetadata, Message, MongoConversationSto
 class MongoConversationStore(AbstractConversationStore):
     def __init__(self, db_uri: str, conversation_id: str):
         self.conversation_id = conversation_id
+        auth_kgws = {}
+        if config.MONGO_DB_PASSWORD and config.MONGO_DB_USERNAME:
+            auth_kgws = {"username": config.MONGO_DB_USERNAME, "password": config.MONGO_DB_PASSWORD}
         self.client = MongoClient(
-            config.MONGO_DB_URL, username=config.MONGO_DB_USERNAME, password=config.MONGO_DB_PASSWORD
+            config.MONGO_DB_URL, **auth_kgws
         )
         self.db = self.client[self.conversation_id]
         self.messages_col = self.db[f"messages_{conversation_id}"]
