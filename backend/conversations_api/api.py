@@ -5,9 +5,10 @@ from typing import Any, Dict
 from loguru import logger
 from ninja import NinjaAPI, Schema
 from pydantic import ValidationError
+from pydantic.type_adapter import TypeAdapter
 
 from bourracho.conversations_registry import ConversationsRegistry
-from bourracho.models import ConversationMetadata, Message, React, User
+from bourracho.models import ConversationMetadata, ConversationStoresModel, Message, React, User
 from conversations_api import config
 
 registry = ConversationsRegistry(
@@ -41,10 +42,11 @@ def register_user(request, payload: User):
 def create_conversation(request, user_id: str, metadata: ConversationMetadata):
     logger.info("Received request to create conversation.")
     try:
-        conversation_id = registry.add_conversation(conversation_metadata=metadata)
+        conversation_store_model = TypeAdapter(ConversationStoresModel).validate_python(config.CONVERSATION_STORE_MODEL)
+        conversation_id = registry.create_conversation(
+            user_id=user_id, metadata=metadata, conversation_store_model=conversation_store_model
+        )
         logger.info(f"Conversation created with id: {conversation_id}")
-        registry.add_user_id_to_conversation(conversation_id=conversation_id, user_id=user_id)
-        logger.info(f"User {user_id} added to conversation {conversation_id}")
         return {"conversation_id": conversation_id}
     except ValidationError as ve:
         logger.warning(f"Validation error during conversation creation: {ve}")

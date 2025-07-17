@@ -7,7 +7,7 @@ from loguru import logger
 from bourracho.conversation_store.abstract_conversation_store import (
     AbstractConversationStore,
 )
-from bourracho.models import ConversationMetadata, Message, React
+from bourracho.models import ConversationMetadata, JsonConversationStoreModel, Message, React
 
 
 class JsonConversationStore(AbstractConversationStore):
@@ -21,11 +21,9 @@ class JsonConversationStore(AbstractConversationStore):
         logger.debug(f"Initializing JsonConversationStore at {db_dir}.")
         os.makedirs(self.db_dir, exist_ok=True)
 
-    def dump(self) -> dict:
-        return {
-            "db_dir": self.db_dir,
-            "conversation_id": self.conversation_id,
-        }
+    @classmethod
+    def from_model(cls, model: JsonConversationStoreModel):
+        return JsonConversationStore(model.db_dir, model.conversation_id)
 
     def write_messages(self, messages: list[Message]) -> None:
         with open(self.messages_filepath, "w") as f:
