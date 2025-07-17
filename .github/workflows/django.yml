@@ -1,10 +1,6 @@
 name: Tests
 
-on:
-  push:
-    branches: [ "main" , "fix/tests"]
-  pull_request:
-    branches: [ "main" ]
+on: push
 
 env:
   REGISTRY_PERSISTENCE_DIR: "test_registry_persistence_dir"
@@ -36,7 +32,7 @@ jobs:
     - name: Start MongoDB
       uses: supercharge/mongodb-github-action@1.12.0
       with:
-        mongodb-version: 8.0.11
+        mongodb-version: 8.0
     - name: Install Dependencies
       run: |
         cd backend
