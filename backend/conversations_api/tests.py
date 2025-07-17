@@ -3,13 +3,12 @@ import os
 import shutil
 import uuid
 
-from django.test import Client
-from unittest_parametrize import ParametrizedTestCase
+from django.test import Client, TestCase
 
 from conversations_api import config
 
 
-class ConversationsApiTests(ParametrizedTestCase):
+class ConversationsApiTests(TestCase):
     def setUp(self):
         if os.path.exists(config.REGISTRY_PERSISTENCE_DIR):
             shutil.rmtree(config.REGISTRY_PERSISTENCE_DIR)
