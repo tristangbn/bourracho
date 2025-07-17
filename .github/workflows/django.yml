@@ -1,0 +1,34 @@
+name: Tests
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 4
+      matrix:
+        python-version: [3.7, 3.8, 3.9]
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install uv
+      uses: astral-sh/setup-uv@v6
+      with:
+        # Install a specific version of uv.
+        version: "0.7.21"
+    - name: "Set up Python"
+      uses: actions/setup-python@v5
+      with:
+        python-version-file: "pyproject.toml"
+    - name: Install Dependencies
+      run: uv sync --locked --all-extras --dev
+    - name: Run package Tests
+      run: uv run pytest backend
+    - name: Run API Tests
+      run: uv run backend/manage.py test
