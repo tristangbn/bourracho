@@ -3,40 +3,43 @@ import os
 import shutil
 import uuid
 
-from django.test import Client, TestCase
+from django.test import Client
+from unittest_parametrize import ParametrizedTestCase
 
 from conversations_api import config
 
-config.REGISTRY_PERSISTENCE_DIR = "tmp/registry_persistence_dir/"
 
-config.REGISTRY_ID = str(uuid.uuid4())[:5]
-if os.path.isdir(config.REGISTRY_PERSISTENCE_DIR):
-    shutil.rmtree(config.REGISTRY_PERSISTENCE_DIR)
-
-
-class ConversationsApiTests(TestCase):
+class ConversationsApiTests(ParametrizedTestCase):
     def setUp(self):
+        if os.path.exists(config.REGISTRY_PERSISTENCE_DIR):
+            shutil.rmtree(config.REGISTRY_PERSISTENCE_DIR)
+        os.makedirs(config.REGISTRY_PERSISTENCE_DIR)
+
         self.client = Client()
         self.api_prefix = "/api/"
+        self.userid_1 = str(uuid.uuid4())
+        self.userid_2 = str(uuid.uuid4())
 
     def test_create_conversation(self):
         # Register user
-        user_test = {"id": "user_test_2", "name": "Test User", "is_admin": True}
+        user_test = {"id": self.userid_1, "name": "Test User", "is_admin": True}
         resp = self.client.post(f"{self.api_prefix}auth/", data=json.dumps(user_test), content_type="application/json")
         self.assertEqual(resp.status_code, 200)
         # Create conversation
         resp = self.client.post(
             f"{self.api_prefix}conversations/{user_test['id']}/create",
-            data=json.dumps({"name": "Test", "id": "AAAA"}),
+            data=json.dumps({"name": "Test"}),
             content_type="application/json",
         )
         self.assertEqual(resp.status_code, 200)
         self.assertIn("conversation_id", resp.json())
-        self.conversation_id = resp.json()["conversation_id"]
+        self.assertTrue("conversation_id" in resp.json())
+        conversation_id = resp.json()["conversation_id"]
+        self.assertTrue(len(conversation_id) == 6)
 
     def test_join_conversation(self):
-        user_test_1 = {"id": "user_test_1", "name": "Test User", "is_admin": True}
-        user_test_2 = {"id": "user_test_2", "name": "Another User", "is_admin": False}
+        user_test_1 = {"id": self.userid_1, "name": "Test User", "is_admin": True}
+        user_test_2 = {"id": self.userid_2, "name": "Another User", "is_admin": False}
         resp = self.client.post(
             f"{self.api_prefix}auth/", data=json.dumps(user_test_1), content_type="application/json"
         )
@@ -44,7 +47,7 @@ class ConversationsApiTests(TestCase):
         # Create conversation
         resp = self.client.post(
             f"{self.api_prefix}conversations/{user_test_1['id']}/create",
-            data=json.dumps({"name": "Test", "id": "BBBB"}),
+            data=json.dumps({"name": "Test"}),
             content_type="application/json",
         )
         self.assertEqual(resp.status_code, 200)
@@ -56,7 +59,6 @@ class ConversationsApiTests(TestCase):
             query_params={"conversation_id": self.conversation_id},
             content_type="application/json",
         )
-        print(resp.json())
         self.assertEqual(resp.status_code, 200)
         self.assertIn("status", resp.json())
         self.assertEqual(resp.json()["status"], "success")
@@ -70,7 +72,7 @@ class ConversationsApiTests(TestCase):
         self.assertEqual(resp.json()["status"], "success")
 
     def test_post_message(self):
-        user_test_1 = {"id": "user_test_1", "name": "Test User", "is_admin": True}
+        user_test_1 = {"id": self.userid_1, "name": "Test User", "is_admin": True}
         resp = self.client.post(
             f"{self.api_prefix}auth/", data=json.dumps(user_test_1), content_type="application/json"
         )
@@ -78,7 +80,7 @@ class ConversationsApiTests(TestCase):
         # Create conversation
         resp = self.client.post(
             f"{self.api_prefix}conversations/{user_test_1['id']}/create",
-            data=json.dumps({"name": "Test", "id": "CCCC"}),
+            data=json.dumps({"name": "Test"}),
             content_type="application/json",
         )
         self.assertEqual(resp.status_code, 200)
@@ -96,8 +98,8 @@ class ConversationsApiTests(TestCase):
         self.assertEqual(resp.json()["status"], "success")
 
     def test_full_conversation_flow(self):
-        user_1 = {"id": "user_test_1", "name": "Test User", "is_admin": True}
-        user_2 = {"id": "user_test_2", "name": "Alice", "pseudo": "AA", "is_admin": False}
+        user_1 = {"id": self.userid_1, "name": "Test User", "is_admin": True}
+        user_2 = {"id": self.userid_2, "name": "Alice", "pseudo": "AA", "is_admin": False}
         # Register user
         resp = self.client.post(f"{self.api_prefix}auth/", data=json.dumps(user_1), content_type="application/json")
         self.assertEqual(resp.status_code, 200)
