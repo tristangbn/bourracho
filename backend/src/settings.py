@@ -26,7 +26,14 @@ SECRET_KEY = os.environ.get(
 )
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
+
+CORS_ALLOW_CREDENTIALS = True
+
+CORS_ALLOW_HEADERS = ["*"]
+
+CORS_ALLOWED_ORIGINS = ["https://bourracho-production.up.railway.app/", "https://bourracho-production.up.railway.app/"]
+
 
 ALLOWED_HOSTS = ["*", ".railway.app"]
 
