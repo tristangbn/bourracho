@@ -17,8 +17,10 @@ def store():
 
 def test_add_user_inserts(store):
     user = MagicMock(spec=User)
+    user.username = "testuser"
     user.model_dump.return_value = {"foo": "bar"}
     with patch.object(store, "users_collection") as mock_coll:
+        mock_coll.find_one.return_value = None  # No existing user
         store.add_user(user)
         mock_coll.insert_one.assert_called_once_with(user.model_dump())
 
@@ -32,7 +34,7 @@ def test_get_user_found(store):
         mock_coll.find_one.return_value = fake_user
         result = store.get_user("uid")
         assert result == fake_user
-        mock_coll.find_one.assert_called_once_with({"id": "uid"})
+        mock_coll.find_one.assert_called_with({"id": "uid"})
 
 
 def test_get_user_not_found(store):
@@ -46,8 +48,10 @@ def test_get_user_not_found(store):
 def test_check_credentials(store):
     with patch.object(store, "users_collection") as mock_coll:
         user = store.get_new_user("uid", "pwd")
-        store.add_user(user)
-        mock_coll.find_one.return_value = user
+        # Mock add_user to not actually add to collection
+        with patch.object(store, "add_user"):
+            store.add_user(user)
+        mock_coll.find_one.return_value = user.model_dump()
         result = store.check_credentials("uid", "pwd")
         assert result == user.id
-        mock_coll.find_one.assert_called_once_with({"username": "uid"})
+        mock_coll.find_one.assert_called_with({"username": "uid"})

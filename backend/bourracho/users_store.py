@@ -24,20 +24,19 @@ class UsersStore:
         return user
 
     def check_credentials(self, username: str, password: str) -> str | None:
-        if username not in self.users_collection.find_one({"username": username}):
-            logger.info(f"No user found with username {username}")
-            raise KeyError(f"User with username {username} not found")
-        user = User.model_validate(self.users_collection.find_one({"username": username}))
-        if not user:
+        db_user = self.users_collection.find_one({"username": username})
+        if not db_user:
             logger.info(f"No user found with username {username}")
             return None
+        user = User.model_validate(db_user)
         if not bcrypt.checkpw(password.encode("utf-8"), user.password_hash.encode("utf-8")):
             logger.info(f"Password check failed for user {username}")
             return None
         return user.id
 
     def add_user(self, user: User) -> None:
-        if user.username in self.users_collection.find_one({"username": user.username}):
+        matching_usernames = self.users_collection.find_one({"username": user.username})
+        if matching_usernames and user.username in matching_usernames:
             raise ValueError("User with username {} already exists".format(user.username))
         self.users_collection.insert_one(user.model_dump())
 

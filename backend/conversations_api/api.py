@@ -18,13 +18,25 @@ class ErrorResponse(Schema):
     error: str
 
 
-@api.post("register/", response={200: dict, 500: ErrorResponse})
-def register_user(request, user_credentials: UserPayload) -> User:
+class UserResponse(Schema):
+    id: str
+    username: str
+    pseudo: str | None = None
+    location: str | None = None
+
+
+@api.post("register/", response={200: UserResponse, 401: ErrorResponse, 500: ErrorResponse})
+def register_user(request, user_credentials: UserPayload):
     logger.info("Received request to register user.")
     try:
         user = registry.register_user(username=user_credentials.username, password=user_credentials.password)
         logger.info(f"User registered with id: {user.id}")
-        return 200, registry.get_user(user_id=user.id).model_dump(exclude="password_hash")
+        return 200, UserResponse(
+            id=user.id,
+            username=user.username,
+            pseudo=user.pseudo,
+            location=user.location
+        )
     except KeyError:
         logger.error(f"User with username {user_credentials.username} already exists")
         return 401, {"error": "User with username {} already exists".format(user_credentials.username)}
@@ -33,18 +45,24 @@ def register_user(request, user_credentials: UserPayload) -> User:
         return 500, {"error": str(e)}
 
 
-@api.post("login/", response={200: User, 500: ErrorResponse})
+@api.post("login/", response={200: UserResponse, 401: ErrorResponse, 500: ErrorResponse})
 def login(request, user_credentials: UserPayload):
     logger.info("Received request to login user.")
     try:
         user_id = registry.check_credentials(username=user_credentials.username, password=user_credentials.password)
         if not user_id:
             logger.error(f"Credentials don't match for username {user_credentials.username}")
-            raise ValueError(f"Credentials don't match for username {user_credentials}")
+            return 401, {"error": f"Credentials don't match for username {user_credentials.username}"}
         logger.info(f"User with id {user_id} logged in.")
-        return 200, registry.get_user(user_id=user_id).model_dump(exclude="password_hash")
+        user = registry.get_user(user_id=user_id)
+        return 200, UserResponse(
+            id=user.id,
+            username=user.username,
+            pseudo=user.pseudo,
+            location=user.location
+        )
     except ValueError as e:
-        return 401, {"error": e}
+        return 401, {"error": str(e)}
     except KeyError:
         logger.error(f"Credentials don't match for username {user_credentials.username}")
         return 401, {"error": f"Username {user_credentials.username} not found in database"}
@@ -143,7 +161,7 @@ def get_conversation(request, conversation_id: str):
         return 500, {"error": str(e)}
 
 
-@api.get("/users", response={200: list[User], 500: ErrorResponse})
+@api.get("/users", response={200: list[UserResponse], 500: ErrorResponse})
 def get_users(request):
     logger.info("Received request to get users.")
     users_ids = request.GET.getlist("users_ids", "*")
@@ -151,7 +169,14 @@ def get_users(request):
     try:
         users = registry.get_users(user_ids=users_ids)
         logger.info(f"Fetched {len(users)} users for user_ids {users_ids}.")
-        return 200, [user.model_dump(exclude="password_hash") for user in users]
+        return 200, [
+            UserResponse(
+                id=user.id,
+                username=user.username,
+                pseudo=user.pseudo,
+                location=user.location
+            ) for user in users
+        ]
     except Exception as e:
         logger.error(f"Error fetching users for user_ids {users_ids}: {e}")
         return 500, {"error": str(e)}
