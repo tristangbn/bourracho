@@ -6,6 +6,7 @@ import { Toaster } from '@/components/ui/sonner'
 import AppHeader from '@/components/layout/AppHeader'
 import WelcomeScreen from '@/components/auth/WelcomeScreen'
 import LoginDialog from '@/components/auth/LoginDialog'
+import ChatPage from '@/components/chat/ChatPage'
 import { useAuth } from '@/hooks/useAuth'
 
 import './App.css'
@@ -14,9 +15,16 @@ client.setConfig({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000', // Fallback
 })
 
+interface Conversation {
+  id: string
+  name: string
+}
+
 function App() {
   const { user, login, logout, isLoading } = useAuth()
   const [showLogin, setShowLogin] = useState(false)
+  const [currentConversation, setCurrentConversation] =
+    useState<Conversation | null>(null)
 
   // Show login dialog if user is not authenticated and not loading
   useEffect(() => {
@@ -37,6 +45,45 @@ function App() {
   const handleLogout = () => {
     logout()
     setShowLogin(true)
+    setCurrentConversation(null)
+  }
+
+  const handleJoinChat = (conversationId: string) => {
+    // For joining, we don't have the name yet, so we'll use a placeholder
+    // In a real app, you'd fetch the conversation details from the API
+    setCurrentConversation({
+      id: conversationId,
+      name: `Chat ${conversationId}`, // Placeholder name
+    })
+  }
+
+  const handleCreateChat = async (
+    conversationName: string
+  ): Promise<string> => {
+    // Mock implementation for testing - generates a 6-digit ID
+    console.log('Creating new chat with name:', conversationName)
+    await new Promise(resolve => setTimeout(resolve, 1000)) // Simulate API call
+    const mockId = Math.floor(100000 + Math.random() * 900000).toString()
+    console.log('Generated conversation ID:', mockId)
+    setCurrentConversation({
+      id: mockId,
+      name: conversationName,
+    })
+    return mockId
+  }
+
+  const handleSendMessage = (message: string) => {
+    console.log(
+      'Sending message to conversation',
+      currentConversation?.id,
+      ':',
+      message
+    )
+    // TODO: Implement actual message sending
+  }
+
+  const handleBackToHome = () => {
+    setCurrentConversation(null)
   }
 
   if (isLoading) {
@@ -59,7 +106,22 @@ function App() {
         <AppHeader user={user} onLogout={handleLogout} />
 
         <main className="container mx-auto p-4">
-          <WelcomeScreen user={user} onLogin={() => setShowLogin(true)} />
+          {currentConversation && user ? (
+            <ChatPage
+              conversationId={currentConversation.id}
+              conversationName={currentConversation.name}
+              user={user}
+              onSendMessage={handleSendMessage}
+              onBackToHome={handleBackToHome}
+            />
+          ) : (
+            <WelcomeScreen
+              user={user}
+              onLogin={() => setShowLogin(true)}
+              onJoinChat={handleJoinChat}
+              onCreateChat={handleCreateChat}
+            />
+          )}
         </main>
 
         <LoginDialog
