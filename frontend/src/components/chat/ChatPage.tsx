@@ -3,26 +3,19 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Send, ArrowLeft, Copy, Check } from 'lucide-react'
 import { showToast } from '@/lib/toast'
+import type { User } from '@/api/generated'
 
 interface Message {
   id: string
   content: string
-  sender: {
-    id: number
-    name: string
-    email: string
-  }
+  sender: User
   timestamp: Date
 }
 
 interface ChatPageProps {
   conversationId: string
   conversationName: string
-  user: {
-    id: number
-    name: string
-    email: string
-  }
+  user: User
   onSendMessage?: (message: string) => void
   onBackToHome: () => void
   messages?: Message[]
@@ -134,7 +127,7 @@ export default function ChatPage({
                   <span className="text-sm font-medium">
                     {message.sender.id === user.id
                       ? 'You'
-                      : message.sender.name}
+                      : message.sender.username}
                   </span>
                   <span className="text-xs opacity-70">
                     {formatTime(message.timestamp)}

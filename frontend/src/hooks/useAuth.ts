@@ -1,10 +1,5 @@
+import type { User } from '@/api/generated'
 import { useState, useEffect } from 'react'
-
-interface User {
-  id: number
-  email: string
-  name: string
-}
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null)

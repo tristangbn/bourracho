@@ -1,19 +1,16 @@
 import { useState } from 'react'
+import { Loader2, Eye, EyeOff } from 'lucide-react'
+
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Loader2, Eye, EyeOff } from 'lucide-react'
+import { conversationsApiApiLogin } from '@/api/generated/sdk.gen'
+import type { User } from '@/api/generated'
 
 interface LoginFormData {
   email: string
   password: string
-}
-
-interface User {
-  id: number
-  email: string
-  name: string
 }
 
 interface LoginFormProps {
@@ -68,18 +65,16 @@ export default function LoginForm({
     if (!validateForm()) return
 
     try {
-      // Simulate API call - replace with actual login API
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      const response = await conversationsApiApiLogin<true>({
+        body: {
+          username: formData.email,
+          password: formData.password,
+        },
+      })
 
-      // Mock successful login
-      const mockUser = {
-        id: 1,
-        email: formData.email,
-        name: formData.email.split('@')[0],
-      }
-
-      onSubmit(mockUser)
-    } catch {
+      onSubmit(response.data)
+    } catch (error) {
+      console.error(error)
       setError('Login failed. Please check your credentials and try again.')
     }
   }

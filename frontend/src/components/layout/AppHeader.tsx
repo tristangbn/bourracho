@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import md5 from 'blueimp-md5'
-import { LogOut, User } from 'lucide-react'
+import { LogOut } from 'lucide-react'
+
+import type { User } from '@/api/generated'
 import { ModeToggle } from '@/components/mode-toggle'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -12,12 +14,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-
-interface User {
-  id: number
-  email: string
-  name: string
-}
 
 interface AppHeaderProps {
   user: User | null
@@ -59,11 +55,11 @@ export default function AppHeader({ user, onLogout }: AppHeaderProps) {
               >
                 <Avatar className="h-8 w-8">
                   <AvatarImage
-                    src={getGravatarUrl(user.email)}
-                    alt={user.name}
+                    src={getGravatarUrl(user.username)}
+                    alt={user.username}
                   />
                   <AvatarFallback>
-                    {user.name.substring(0, 2).toUpperCase()}
+                    {user.username.substring(0, 2).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
               </Button>
@@ -72,10 +68,10 @@ export default function AppHeader({ user, onLogout }: AppHeaderProps) {
               <DropdownMenuLabel className="font-normal">
                 <div className="flex flex-col space-y-1">
                   <p className="text-sm font-medium leading-none">
-                    {user.name}
+                    {user.username}
                   </p>
                   <p className="text-xs leading-none text-muted-foreground">
-                    {user.email}
+                    {user.pseudo}
                   </p>
                 </div>
               </DropdownMenuLabel>

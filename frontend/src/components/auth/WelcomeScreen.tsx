@@ -1,13 +1,8 @@
+import type { User } from '@/api/generated'
+import AppHeader from '@/components/layout/AppHeader'
 import { Button } from '@/components/ui/button'
 import JoinChatModal from './JoinChatModal'
 import NewChatModal from './NewChatModal'
-import AppHeader from '@/components/layout/AppHeader'
-
-interface User {
-  id: number
-  email: string
-  name: string
-}
 
 interface WelcomeScreenProps {
   user: User | null

@@ -7,13 +7,8 @@ import {
   DialogOverlay,
   DialogPortal,
 } from '@/components/ui/dialog'
+import type { User } from '@/api/generated'
 import LoginForm from './LoginForm'
-
-interface User {
-  id: number
-  email: string
-  name: string
-}
 
 interface LoginDialogProps {
   isOpen: boolean
