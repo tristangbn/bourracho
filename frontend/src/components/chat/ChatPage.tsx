@@ -216,6 +216,51 @@ export default function ChatPage({
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   }
 
+  const groupMessages = (messages: Message[]) => {
+    const groups: Array<{
+      userId: string
+      messages: Message[]
+      timestamp: string
+    }> = []
+
+    messages.forEach(message => {
+      const lastGroup = groups[groups.length - 1]
+
+      if (
+        lastGroup &&
+        lastGroup.userId === message.issuer_id &&
+        message.timestamp &&
+        lastGroup.timestamp
+      ) {
+        const timeDiff =
+          new Date(message.timestamp).getTime() -
+          new Date(lastGroup.timestamp).getTime()
+        if (timeDiff <= 30000) {
+          // 30 seconds
+          // Add to existing group
+          lastGroup.messages.push(message)
+          lastGroup.timestamp = message.timestamp
+        } else {
+          // Start new group
+          groups.push({
+            userId: message.issuer_id,
+            messages: [message],
+            timestamp: message.timestamp || '',
+          })
+        }
+      } else {
+        // Start new group
+        groups.push({
+          userId: message.issuer_id,
+          messages: [message],
+          timestamp: message.timestamp || '',
+        })
+      }
+    })
+
+    return groups
+  }
+
   const copyConversationId = async () => {
     try {
       await navigator.clipboard.writeText(conversation.id || '')
@@ -237,7 +282,7 @@ export default function ChatPage({
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b bg-card">
+      <div className="flex items-center justify-between p-2 border-b bg-card">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="sm" onClick={onBackToHome}>
             <ArrowLeft className="h-4 w-4 mr-2" />
@@ -245,7 +290,9 @@ export default function ChatPage({
           </Button>
           <div className="flex items-center gap-2">
             <div className="flex items-baseline gap-2">
-              <h2 className="text-xl font-semibold">{conversation.name}</h2>
+              <h2 className="text-xl text-nowrap font-semibold">
+                {conversation.name}
+              </h2>
               <p className="text-sm text-muted-foreground">
                 (#{conversation.id})
               </p>
@@ -268,7 +315,7 @@ export default function ChatPage({
 
       {/* Messages Area */}
       <div
-        className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0 relative"
+        className="flex-1 overflow-y-auto pl-2 pr-4 pt-4 pb-4 space-y-4 min-h-0 relative"
         onScroll={handleScroll}
         ref={messagesContainerRef}
       >
@@ -289,50 +336,57 @@ export default function ChatPage({
             </div>
           </div>
         ) : (
-          messages.map(message => (
+          groupMessages(messages).map((group, groupIndex) => (
             <div
-              key={message.id}
-              className={`flex ${message.issuer_id === user.id ? 'justify-end' : 'justify-start'}`}
+              key={`${group.userId}-${group.timestamp}`}
+              className={`flex ${group.userId === user.id ? 'justify-end' : 'justify-start'} ${groupIndex > 0 ? 'mt-4' : ''}`}
             >
               <div
-                className={`flex items-end gap-2 max-w-[70%] ${message.issuer_id === user.id ? 'flex-row-reverse' : 'flex-row'}`}
+                className={`flex items-end gap-2 ${group.userId === user.id ? 'flex-row-reverse' : 'flex-row'}`}
               >
-                {/* Avatar - only show for other users, not for current user */}
+                {/* Avatar - only show on the last message of the group */}
                 {
                   <Avatar className="h-6 w-6 flex-shrink-0">
                     <AvatarImage
                       src={getGravatarUrl(
-                        users[message.issuer_id]?.username || message.issuer_id,
+                        users[group.userId]?.username || group.userId,
                         100
                       )}
-                      alt={
-                        users[message.issuer_id]?.username || message.issuer_id
-                      }
+                      alt={users[group.userId]?.username || group.userId}
                     />
                     <AvatarFallback className="text-xs">
                       {getUserInitials(
-                        users[message.issuer_id]?.username || message.issuer_id
+                        users[group.userId]?.username || group.userId
                       )}
                     </AvatarFallback>
                   </Avatar>
                 }
 
-                {/* Message Content */}
-                <div
-                  className={`rounded-lg px-4 py-2 ${
-                    message.issuer_id === user.id
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted'
-                  }`}
-                >
-                  <div className="flex items-baseline gap-8">
-                    <p className="text-sm">{message.content}</p>
-                    {message.timestamp && (
-                      <span className="text-xs opacity-30">
-                        {formatTime(message.timestamp)}
-                      </span>
-                    )}
-                  </div>
+                {/* Message Group Content */}
+                <div className="flex flex-col gap-1">
+                  {group.messages.map(message => (
+                    <div
+                      key={message.id}
+                      className={`flex ${group.userId === user.id ? 'justify-end' : 'justify-start'}`}
+                    >
+                      <div
+                        className={`rounded-lg px-4 py-2 ${
+                          group.userId === user.id
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-muted'
+                        }`}
+                      >
+                        <div className="flex items-baseline gap-8">
+                          <p className="text-sm">{message.content}</p>
+                          {message.timestamp && (
+                            <span className="text-xs opacity-30">
+                              {formatTime(message.timestamp)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
@@ -362,12 +416,15 @@ export default function ChatPage({
               setIsUserTyping(e.target.value.length > 0)
             }}
             placeholder="Type your message..."
-            className="flex-1"
-            autoFocus
+            className="flex-1 rounded-lg"
             disabled={isSending}
           />
-          <Button type="submit" disabled={!messageInput.trim() || isSending}>
-            <Send className="h-4 w-4" />
+          <Button
+            type="submit"
+            disabled={!messageInput.trim() || isSending}
+            className="w-9 h-9 p-0 rounded-lg"
+          >
+            <Send className="h-4 w-4 mr-0.5 mt-0.5" />
           </Button>
         </form>
       </div>

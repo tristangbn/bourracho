@@ -1,10 +1,15 @@
 import { useEffect, useState } from 'react'
 import type { User, Conversation } from '@/api/generated'
-import { conversationsApiApiListConversations } from '@/api/generated'
+import {
+  conversationsApiApiListConversations,
+  conversationsApiApiGetUsers,
+} from '@/api/generated'
 import AppHeader from '@/components/layout/AppHeader'
 import { Button } from '@/components/ui/button'
 import { MessageCircle, Users, Lock, Unlock } from 'lucide-react'
 import { showToast } from '@/lib/toast'
+import { getGravatarUrl, getUserInitials } from '@/lib/gravatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import JoinChatModal from './JoinChatModal'
 import NewChatModal from './NewChatModal'
 
@@ -25,6 +30,29 @@ export default function WelcomeScreen({
 }: WelcomeScreenProps) {
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const [users, setUsers] = useState<Record<string, User>>({})
+
+  const fetchUsers = async () => {
+    if (!user) return
+
+    try {
+      const response = await conversationsApiApiGetUsers({
+        headers: {
+          'User-Id': user.id,
+        },
+      })
+
+      if (response.data && Array.isArray(response.data)) {
+        const usersMap: Record<string, User> = {}
+        response.data.forEach(user => {
+          usersMap[user.id] = user
+        })
+        setUsers(usersMap)
+      }
+    } catch (error) {
+      console.error('Failed to fetch users:', error)
+    }
+  }
 
   const fetchConversations = async () => {
     if (!user) return
@@ -54,6 +82,7 @@ export default function WelcomeScreen({
   useEffect(() => {
     if (user) {
       fetchConversations()
+      fetchUsers()
     }
   }, [user])
 
@@ -66,6 +95,51 @@ export default function WelcomeScreen({
     }
   }
 
+  const renderUserAvatars = (userIds: string[] | undefined) => {
+    if (!userIds || userIds.length === 0) {
+      return (
+        <div className="flex items-center gap-1 text-muted-foreground">
+          <Users className="h-4 w-4" />
+          <span className="text-sm">0 members</span>
+        </div>
+      )
+    }
+
+    const maxAvatars = 5
+    const displayUsers = userIds.slice(0, maxAvatars)
+    const hasMoreUsers = userIds.length > maxAvatars
+
+    return (
+      <div className="flex items-center gap-1">
+        <div className="flex -space-x-2">
+          {displayUsers.map(userId => {
+            const user = users[userId]
+            return (
+              <Avatar
+                key={userId}
+                className="h-6 w-6 border-2 border-background"
+                title={user?.username || userId}
+              >
+                <AvatarImage
+                  src={getGravatarUrl(user?.username || userId, 100)}
+                  alt={user?.username || userId}
+                />
+                <AvatarFallback className="text-xs">
+                  {getUserInitials(user?.username || userId)}
+                </AvatarFallback>
+              </Avatar>
+            )
+          })}
+        </div>
+        {hasMoreUsers && (
+          <span className="text-sm text-muted-foreground ml-1">
+            +{userIds.length - maxAvatars}
+          </span>
+        )}
+      </div>
+    )
+  }
+
   if (user) {
     return (
       <div className="flex flex-col h-full">
@@ -73,9 +147,9 @@ export default function WelcomeScreen({
         <AppHeader user={user} onLogout={onLogout} />
 
         {/* Conversation List Section */}
-        <div className="flex-1 p-6 overflow-auto">
-          <div className="max-w-4xl mx-auto">
-            <div className="flex items-center justify-between mb-6">
+        <div className="flex-1 overflow-auto">
+          <div className="w-full">
+            <div className="flex items-center justify-between px-6 pt-6 mb-6">
               <h2 className="text-2xl font-bold">Your Conversations</h2>
               <Button
                 variant="outline"
@@ -119,14 +193,14 @@ export default function WelcomeScreen({
                 </div>
               </div>
             ) : (
-              <div className="space-y-0 border rounded-lg overflow-hidden bg-card">
+              <div className="space-y-0 border-y overflow-hidden bg-card">
                 {conversations.map((conversation, index) => (
                   <div
                     key={conversation.id}
                     className="cursor-pointer hover:bg-muted/50 transition-colors duration-200"
                     onClick={() => handleGoToConversation(conversation)}
                   >
-                    <div className="p-4">
+                    <div className="px-6 py-3">
                       <div className="flex items-center justify-between">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-3">
@@ -140,27 +214,16 @@ export default function WelcomeScreen({
                                 {conversation.name || 'Unnamed Chat'}
                               </h3>
                             </div>
-                          </div>
-                          <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
-                            <div className="flex items-center gap-1">
-                              <Users className="h-4 w-4" />
-                              <span>
-                                {conversation.users_ids?.length || 0} member
-                                {(conversation.users_ids?.length || 0) !== 1
-                                  ? 's'
-                                  : ''}
-                              </span>
-                            </div>
-                            <span className="font-mono text-xs">
-                              ID: {conversation.id}
-                            </span>
+                            {renderUserAvatars(conversation.users_ids)}
                           </div>
                         </div>
-                        <MessageCircle className="h-5 w-5 text-muted-foreground ml-4 flex-shrink-0" />
+                        <span className="font-mono text-xs text-muted-foreground">
+                          #{conversation.id}
+                        </span>
                       </div>
                     </div>
                     {index < conversations.length - 1 && (
-                      <div className="border-t border-border mx-4" />
+                      <div className="border-t border-border mx-6" />
                     )}
                   </div>
                 ))}
@@ -171,7 +234,7 @@ export default function WelcomeScreen({
 
         {/* Action Buttons Section - Only show when there are conversations */}
         {conversations.length > 0 && (
-          <div className="p-4 border-t bg-card flex gap-3 justify-center">
+          <div className="px-6 py-3 mb-2 border-t bg-card flex gap-3 justify-center">
             <NewChatModal
               user={user}
               onGoToChat={onGoToChat}
