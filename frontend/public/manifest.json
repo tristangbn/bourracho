@@ -1,0 +1,59 @@
+{
+  "name": "Bourracho - Party Chat",
+  "short_name": "Bourracho",
+  "description": "Your AI drinking buddy 🍻",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "en",
+  "categories": ["social", "communication"],
+  "icons": [
+    {
+      "src": "/beer.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/beer.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/beer.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "New Chat",
+      "short_name": "New Chat",
+      "description": "Create a new party chat",
+      "url": "/?action=new-chat",
+      "icons": [
+        {
+          "src": "/beer.svg",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Join Chat",
+      "short_name": "Join Chat",
+      "description": "Join an existing party chat",
+      "url": "/?action=join-chat",
+      "icons": [
+        {
+          "src": "/beer.svg",
+          "sizes": "96x96"
+        }
+      ]
+    }
+  ]
+}
