@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Send, ArrowLeft, Copy, Check, RefreshCw } from 'lucide-react'
+import { Send, ArrowLeft, Copy, Check } from 'lucide-react'
 import { showToast } from '@/lib/toast'
 import type { User, Message, Conversation } from '@/api/generated'
 import {
@@ -31,15 +31,49 @@ export default function ChatPage({
   const [isLoading, setIsLoading] = useState(false)
   const [isSending, setIsSending] = useState(false)
   const [users, setUsers] = useState<Record<string, User>>({})
+  const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(
+    null
+  )
+  const [isPolling, setIsPolling] = useState(false)
+  const [isUserTyping, setIsUserTyping] = useState(false)
 
   // Fetch messages when component mounts
   useEffect(() => {
     fetchMessages()
     fetchUsers()
+
+    // Start polling for new messages every 1 second
+    const interval = setInterval(() => {
+      if (!isPolling && !isLoading && !isUserTyping) {
+        fetchMessages(true) // Pass true to indicate this is a polling request
+      }
+    }, 1000)
+    setPollingInterval(interval)
+
+    // Cleanup polling on unmount
+    return () => {
+      if (pollingInterval) {
+        clearInterval(pollingInterval)
+      }
+    }
   }, [conversation.id])
 
-  const fetchMessages = async () => {
-    setIsLoading(true)
+  // Cleanup polling when component unmounts
+  useEffect(() => {
+    return () => {
+      if (pollingInterval) {
+        clearInterval(pollingInterval)
+      }
+    }
+  }, [pollingInterval])
+
+  const fetchMessages = async (isPollingRequest = false) => {
+    if (isPollingRequest) {
+      setIsPolling(true)
+    } else {
+      setIsLoading(true)
+    }
+
     try {
       const response = await conversationsApiApiGetMessages({
         path: {
@@ -51,16 +85,37 @@ export default function ChatPage({
       })
 
       if (response.data && Array.isArray(response.data)) {
-        setMessages(response.data)
+        // Only update messages if they're different (for polling efficiency)
+        if (isPollingRequest) {
+          // For polling, only update if the message count or content has changed
+          const currentMessageIds = new Set(messages.map(m => m.id))
+          const newMessageIds = new Set(response.data.map(m => m.id))
+
+          if (
+            currentMessageIds.size !== newMessageIds.size ||
+            !response.data.every(m => currentMessageIds.has(m.id))
+          ) {
+            setMessages(response.data)
+          }
+        } else {
+          // For manual refresh, always update
+          setMessages(response.data)
+        }
       }
     } catch (error) {
       console.error('Failed to fetch messages:', error)
-      showToast.error(
-        'Failed to load messages',
-        'Please try refreshing the page.'
-      )
+      if (!isPollingRequest) {
+        showToast.error(
+          'Failed to load messages',
+          'Please try refreshing the page.'
+        )
+      }
     } finally {
-      setIsLoading(false)
+      if (isPollingRequest) {
+        setIsPolling(false)
+      } else {
+        setIsLoading(false)
+      }
     }
   }
 
@@ -109,6 +164,7 @@ export default function ChatPage({
           // Add the new message to the list
           setMessages(prev => [...prev, response.data])
           setMessageInput('')
+          setIsUserTyping(false)
 
           // Call the optional callback
           if (onSendMessage) {
@@ -177,15 +233,6 @@ export default function ChatPage({
             </Button>
           </div>
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={fetchMessages}
-          disabled={isLoading}
-          className="h-8 w-8 p-0"
-        >
-          <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-        </Button>
       </div>
 
       {/* Messages Area */}
@@ -246,7 +293,10 @@ export default function ChatPage({
         <form onSubmit={handleSubmit} className="flex gap-2">
           <Input
             value={messageInput}
-            onChange={e => setMessageInput(e.target.value)}
+            onChange={e => {
+              setMessageInput(e.target.value)
+              setIsUserTyping(e.target.value.length > 0)
+            }}
             placeholder="Type your message..."
             className="flex-1"
             autoFocus
