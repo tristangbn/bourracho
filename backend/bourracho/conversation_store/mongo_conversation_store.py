@@ -14,9 +14,7 @@ class MongoConversationStore(AbstractConversationStore):
         auth_kgws = {}
         if config.MONGO_DB_PASSWORD and config.MONGO_DB_USERNAME:
             auth_kgws = {"username": config.MONGO_DB_USERNAME, "password": config.MONGO_DB_PASSWORD}
-        self.client = MongoClient(
-            config.MONGO_DB_URL, **auth_kgws
-        )
+        self.client = MongoClient(config.MONGO_DB_URL, **auth_kgws)
         self.db = self.client[self.conversation_id]
         self.messages_col = self.db[f"messages_{conversation_id}"]
         self.users_col = self.db[f"users_{conversation_id}"]
