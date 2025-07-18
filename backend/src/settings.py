@@ -28,14 +28,50 @@ SECRET_KEY = os.environ.get(
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
+CORS_ALLOW_HEADERS = [
+    "accept",
+    "accept-encoding",
+    "authorization",
+    "content-type",
+    "dnt",
+    "origin",
+    "user-agent",
+    "x-csrftoken",
+    "x-requested-with",
+]
+
+CORS_ALLOW_METHODS = [
+    "DELETE",
+    "GET",
+    "OPTIONS",
+    "PATCH",
+    "POST",
+    "PUT",
+]
+
+# Get CORS origins from environment variable or use defaults
+CORS_ORIGINS_ENV = os.environ.get("CORS_ALLOWED_ORIGINS", "")
+if CORS_ORIGINS_ENV:
+    CORS_ALLOWED_ORIGINS = CORS_ORIGINS_ENV.split(",")
+else:
+    CORS_ALLOWED_ORIGINS = [
+        "https://bourracho.vercel.app",
+        "https://bourracho-production.up.railway.app",
+        "http://localhost:3000",
+        "http://localhost:5173",
+    ]
+
+# Allow credentials (cookies, authorization headers, etc.)
 CORS_ALLOW_CREDENTIALS = True
 
-CORS_ALLOW_HEADERS = ["*"]
+# Additional CORS settings for better compatibility
+CORS_PREFLIGHT_MAX_AGE = 86400
 
-CORS_ALLOWED_ORIGINS = ["https://bourracho-production.up.railway.app/", "https://bourracho-production.up.railway.app/"]
 
+# Additional CORS settings for preflight requests
+CORS_URLS_REGEX = r"^.*$"  # Apply CORS to all URLs
 
-ALLOWED_HOSTS = ["*", ".railway.app"]
+ALLOWED_HOSTS = ["*", ".railway.app", ".vercel.app"]
 
 
 # Application definition
@@ -62,6 +98,11 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
+
+# Security settings
+SECURE_BROWSER_XSS_FILTER = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = "DENY"
 
 ROOT_URLCONF = "src.urls"
 
@@ -135,5 +176,4 @@ STATIC_URL = "static/"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# CORS settings for local development
-CORS_ALLOW_ALL_ORIGINS = True
+# CORS settings for production and development
