@@ -13,16 +13,15 @@ import {
 } from '@/components/ui/dialog'
 import { showToast } from '@/lib/toast'
 import { Copy, Check, MessageCircle } from 'lucide-react'
+import { conversationsApiApiCreateConversation } from '@/api/generated'
+import type { User, Conversation } from '@/api/generated'
 
 interface NewChatModalProps {
-  onCreateChat: (conversationName: string) => Promise<string> | string
+  user: User
   onGoToChat?: (conversationId: string) => void
 }
 
-export default function NewChatModal({
-  onCreateChat,
-  onGoToChat,
-}: NewChatModalProps) {
+export default function NewChatModal({ user, onGoToChat }: NewChatModalProps) {
   const [conversationName, setConversationName] = useState('')
   const [isOpen, setIsOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -34,13 +33,29 @@ export default function NewChatModal({
     if (conversationName.trim()) {
       setIsLoading(true)
       try {
-        const id = await onCreateChat(conversationName.trim())
-        setConversationId(id)
-        showToast.success(
-          'Chat created successfully!',
-          'Share the conversation ID with others to join.'
-        )
-      } catch {
+        const conversationData: Conversation = {
+          name: conversationName.trim(),
+        }
+
+        const response = await conversationsApiApiCreateConversation({
+          body: conversationData,
+          headers: {
+            user_id: user.id,
+          },
+        })
+
+        if (response.data && 'id' in response.data) {
+          const id = response.data.id!
+          setConversationId(id)
+          showToast.success(
+            'Chat created successfully!',
+            'Share the conversation ID with others to join.'
+          )
+        } else {
+          throw new Error('Invalid response from server')
+        }
+      } catch (error) {
+        console.error('Failed to create chat:', error)
         showToast.error('Failed to create chat', 'Please try again.')
       } finally {
         setIsLoading(false)
