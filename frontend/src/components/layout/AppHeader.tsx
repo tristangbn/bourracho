@@ -1,9 +1,8 @@
-import { useEffect, useState } from 'react'
 import md5 from 'blueimp-md5'
-import { LogOut } from 'lucide-react'
+import { LogOut, Palette } from 'lucide-react'
 
 import type { User } from '@/api/generated'
-import { ModeToggle } from '@/components/mode-toggle'
+import { useTheme } from '@/components/theme-provider'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
@@ -27,13 +26,15 @@ function getGravatarUrl(email: string, size: number = 200): string {
 }
 
 export default function AppHeader({ user, onLogout }: AppHeaderProps) {
-  const [showThemeToggle, setShowThemeToggle] = useState(false)
+  const { theme, setTheme } = useTheme()
 
-  useEffect(() => {
-    // Check if #theme parameter exists in the URL
-    const hasThemeParam = window.location.hash.includes('#theme')
-    setShowThemeToggle(hasThemeParam)
-  }, [])
+  const toggleTheme = () => {
+    if (theme === 'light') {
+      setTheme('dark')
+    } else {
+      setTheme('light')
+    }
+  }
 
   return (
     <header className="flex items-center justify-between px-4 py-2 border-b">
@@ -43,8 +44,6 @@ export default function AppHeader({ user, onLogout }: AppHeaderProps) {
         </span>
       </div>
       <div className="flex items-center gap-4">
-        {showThemeToggle && <ModeToggle />}
-
         {/* Avatar positioned absolutely in top right */}
         {user && (
           <DropdownMenu>
@@ -75,6 +74,13 @@ export default function AppHeader({ user, onLogout }: AppHeaderProps) {
                   </p>
                 </div>
               </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={toggleTheme}>
+                <Palette className="mr-2 h-4 w-4" />
+                <span>
+                  Switch to {theme === 'light' ? 'Dark' : 'Light'} Mode
+                </span>
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={onLogout}>
                 <LogOut className="mr-2 h-4 w-4" />
