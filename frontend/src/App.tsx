@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 
 import { client } from '@/api/generated/client.gen'
-import type { User } from '@/api/generated'
+import type { Conversation, User } from '@/api/generated'
 import { ThemeProvider } from '@/components/theme-provider'
 import { Toaster } from '@/components/ui/sonner'
 import WelcomeScreen from '@/components/auth/WelcomeScreen'
@@ -14,11 +14,6 @@ import './App.css'
 client.setConfig({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000', // Fallback
 })
-
-interface Conversation {
-  id: string
-  name: string
-}
 
 function App() {
   const { user, login, logout, isLoading } = useAuth()
@@ -44,37 +39,27 @@ function App() {
     setCurrentConversation(null)
   }
 
-  const handleJoinChat = (conversationId: string) => {
+  const handleJoinChat = ({ id, name }: Conversation) => {
     // For joining, we don't have the name yet, so we'll use a placeholder
     // In a real app, you'd fetch the conversation details from the API
     setCurrentConversation({
-      id: conversationId,
-      name: `Chat ${conversationId}`, // Placeholder name
+      id: id,
+      name: name, // Placeholder name
     })
   }
 
-  const handleGoToChat = (conversationId: string) => {
-    if (currentConversation && currentConversation.id === conversationId) {
+  const handleGoToChat = ({ id, name }: Conversation) => {
+    if (currentConversation && currentConversation.id === id) {
       // Already in the right conversation, just ensure it's set
       setCurrentConversation(currentConversation)
     } else {
       // This would typically fetch the conversation details from the API
       // For now, we'll use a placeholder name
       setCurrentConversation({
-        id: conversationId,
-        name: `Chat ${conversationId}`,
+        id: id,
+        name,
       })
     }
-  }
-
-  const handleSendMessage = (message: string) => {
-    console.log(
-      'Sending message to conversation',
-      currentConversation?.id,
-      ':',
-      message
-    )
-    // TODO: Implement actual message sending
   }
 
   const handleBackToHome = () => {
@@ -101,10 +86,8 @@ function App() {
         <main className="flex-1 min-h-0">
           {currentConversation && user ? (
             <ChatPage
-              conversationId={currentConversation.id}
-              conversationName={currentConversation.name}
+              conversation={currentConversation}
               user={user}
-              onSendMessage={handleSendMessage}
               onBackToHome={handleBackToHome}
             />
           ) : (

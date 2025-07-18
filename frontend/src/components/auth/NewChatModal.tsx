@@ -18,10 +18,15 @@ import type { User, Conversation } from '@/api/generated'
 
 interface NewChatModalProps {
   user: User
-  onGoToChat?: (conversationId: string) => void
+  onGoToChat?: ({ id, name }: Conversation) => void
+  onConversationCreated?: () => void
 }
 
-export default function NewChatModal({ user, onGoToChat }: NewChatModalProps) {
+export default function NewChatModal({
+  user,
+  onGoToChat,
+  onConversationCreated,
+}: NewChatModalProps) {
   const [conversationName, setConversationName] = useState('')
   const [isOpen, setIsOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -40,7 +45,7 @@ export default function NewChatModal({ user, onGoToChat }: NewChatModalProps) {
         const response = await conversationsApiApiCreateConversation({
           body: conversationData,
           headers: {
-            user_id: user.id,
+            'User-Id': user.id,
           },
         })
 
@@ -51,6 +56,8 @@ export default function NewChatModal({ user, onGoToChat }: NewChatModalProps) {
             'Chat created successfully!',
             'Share the conversation ID with others to join.'
           )
+          // Refresh the conversation list
+          onConversationCreated?.()
         } else {
           throw new Error('Invalid response from server')
         }
@@ -93,7 +100,10 @@ export default function NewChatModal({ user, onGoToChat }: NewChatModalProps) {
 
   const handleGoToChat = () => {
     if (conversationId && onGoToChat) {
-      onGoToChat(conversationId)
+      onGoToChat({
+        id: conversationId,
+        name: conversationName,
+      })
       setIsOpen(false)
     }
   }

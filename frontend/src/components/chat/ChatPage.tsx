@@ -1,20 +1,17 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Send, ArrowLeft, Copy, Check } from 'lucide-react'
+import { Send, ArrowLeft, Copy, Check, RefreshCw } from 'lucide-react'
 import { showToast } from '@/lib/toast'
-import type { User } from '@/api/generated'
-
-interface Message {
-  id: string
-  content: string
-  sender: User
-  timestamp: Date
-}
+import type { User, Message, Conversation } from '@/api/generated'
+import {
+  conversationsApiApiGetMessages,
+  conversationsApiApiPostMessage,
+  conversationsApiApiGetUsers,
+} from '@/api/generated'
 
 interface ChatPageProps {
-  conversationId: string
-  conversationName: string
+  conversation: Conversation
   user: User
   onSendMessage?: (message: string) => void
   onBackToHome: () => void
@@ -22,36 +19,119 @@ interface ChatPageProps {
 }
 
 export default function ChatPage({
-  conversationId,
-  conversationName,
+  conversation,
   user,
   onSendMessage,
   onBackToHome,
-  messages = [],
+  messages: initialMessages = [],
 }: ChatPageProps) {
   const [messageInput, setMessageInput] = useState('')
   const [copied, setCopied] = useState(false)
+  const [messages, setMessages] = useState<Message[]>(initialMessages)
+  const [isLoading, setIsLoading] = useState(false)
+  const [isSending, setIsSending] = useState(false)
+  const [users, setUsers] = useState<Record<string, User>>({})
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (messageInput.trim()) {
-      if (onSendMessage) {
-        onSendMessage(messageInput.trim())
-      } else {
-        console.log('Sending message:', messageInput.trim())
-        // TODO: Implement actual message sending
+  // Fetch messages when component mounts
+  useEffect(() => {
+    fetchMessages()
+    fetchUsers()
+  }, [conversation.id])
+
+  const fetchMessages = async () => {
+    setIsLoading(true)
+    try {
+      const response = await conversationsApiApiGetMessages({
+        path: {
+          conversation_id: conversation.id || '',
+        },
+        headers: {
+          'User-Id': user.id,
+        },
+      })
+
+      if (response.data && Array.isArray(response.data)) {
+        setMessages(response.data)
       }
-      setMessageInput('')
+    } catch (error) {
+      console.error('Failed to fetch messages:', error)
+      showToast.error(
+        'Failed to load messages',
+        'Please try refreshing the page.'
+      )
+    } finally {
+      setIsLoading(false)
     }
   }
 
-  const formatTime = (date: Date) => {
+  const fetchUsers = async () => {
+    try {
+      const response = await conversationsApiApiGetUsers({
+        headers: {
+          'User-Id': user.id,
+        },
+      })
+
+      if (response.data && Array.isArray(response.data)) {
+        const usersMap: Record<string, User> = {}
+        response.data.forEach(user => {
+          usersMap[user.id] = user
+        })
+        setUsers(usersMap)
+      }
+    } catch (error) {
+      console.error('Failed to fetch users:', error)
+    }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (messageInput.trim() && !isSending) {
+      setIsSending(true)
+      try {
+        const messageData: Message = {
+          content: messageInput.trim(),
+          conversation_id: conversation.id || '',
+          issuer_id: user.id,
+        }
+
+        const response = await conversationsApiApiPostMessage({
+          path: {
+            conversation_id: conversation.id || '',
+          },
+          body: messageData,
+          headers: {
+            'User-Id': user.id,
+          },
+        })
+
+        if (response.data) {
+          // Add the new message to the list
+          setMessages(prev => [...prev, response.data])
+          setMessageInput('')
+
+          // Call the optional callback
+          if (onSendMessage) {
+            onSendMessage(messageInput.trim())
+          }
+        }
+      } catch (error) {
+        console.error('Failed to send message:', error)
+        showToast.error('Failed to send message', 'Please try again.')
+      } finally {
+        setIsSending(false)
+      }
+    }
+  }
+
+  const formatTime = (timestamp: string) => {
+    const date = new Date(timestamp)
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   }
 
   const copyConversationId = async () => {
     try {
-      await navigator.clipboard.writeText(conversationId)
+      await navigator.clipboard.writeText(conversation.id || '')
       setCopied(true)
       showToast.success(
         'Conversation ID copied!',
@@ -78,9 +158,9 @@ export default function ChatPage({
           </Button>
           <div className="flex items-center gap-2">
             <div className="flex items-baseline gap-2">
-              <h2 className="text-xl font-semibold">{conversationName}</h2>
+              <h2 className="text-xl font-semibold">{conversation.name}</h2>
               <p className="text-sm text-muted-foreground">
-                (#{conversationId})
+                (#{conversation.id})
               </p>
             </div>
             <Button
@@ -97,11 +177,27 @@ export default function ChatPage({
             </Button>
           </div>
         </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={fetchMessages}
+          disabled={isLoading}
+          className="h-8 w-8 p-0"
+        >
+          <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+        </Button>
       </div>
 
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0">
-        {messages.length === 0 ? (
+        {isLoading ? (
+          <div className="flex items-center justify-center h-full text-muted-foreground">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto mb-2"></div>
+              <p>Loading messages...</p>
+            </div>
+          </div>
+        ) : messages.length === 0 ? (
           <div className="flex items-center justify-center h-full text-muted-foreground">
             <div className="text-center">
               <p className="text-lg">Welcome to the party! 🎉</p>
@@ -114,24 +210,29 @@ export default function ChatPage({
           messages.map(message => (
             <div
               key={message.id}
-              className={`flex ${message.sender.id === user.id ? 'justify-end' : 'justify-start'}`}
+              className={`flex ${message.issuer_id === user.id ? 'justify-end' : 'justify-start'}`}
             >
               <div
                 className={`max-w-[70%] rounded-lg px-4 py-2 ${
-                  message.sender.id === user.id
+                  message.issuer_id === user.id
                     ? 'bg-primary text-primary-foreground'
                     : 'bg-muted'
                 }`}
               >
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-sm font-medium">
-                    {message.sender.id === user.id
+                    {message.issuer_id === user.id
                       ? 'You'
-                      : message.sender.username}
+                      : users[message.issuer_id]?.username ||
+                        (Object.keys(users).length > 0
+                          ? 'Unknown User'
+                          : '...')}
                   </span>
-                  <span className="text-xs opacity-70">
-                    {formatTime(message.timestamp)}
-                  </span>
+                  {message.timestamp && (
+                    <span className="text-xs opacity-70">
+                      {formatTime(message.timestamp)}
+                    </span>
+                  )}
                 </div>
                 <p className="text-sm">{message.content}</p>
               </div>
@@ -149,8 +250,9 @@ export default function ChatPage({
             placeholder="Type your message..."
             className="flex-1"
             autoFocus
+            disabled={isSending}
           />
-          <Button type="submit" disabled={!messageInput.trim()}>
+          <Button type="submit" disabled={!messageInput.trim() || isSending}>
             <Send className="h-4 w-4" />
           </Button>
         </form>
