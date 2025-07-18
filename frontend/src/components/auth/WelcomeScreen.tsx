@@ -1,4 +1,6 @@
 import { Button } from '@/components/ui/button'
+import JoinChatModal from './JoinChatModal'
+import NewChatModal from './NewChatModal'
 
 interface User {
   id: number
@@ -9,9 +11,40 @@ interface User {
 interface WelcomeScreenProps {
   user: User | null
   onLogin: () => void
+  onJoinChat?: (conversationId: string) => void
+  onCreateChat?: (conversationName: string) => Promise<string> | string
 }
 
-export default function WelcomeScreen({ user, onLogin }: WelcomeScreenProps) {
+export default function WelcomeScreen({
+  user,
+  onLogin,
+  onJoinChat,
+  onCreateChat,
+}: WelcomeScreenProps) {
+  const handleJoinChat = (conversationId: string) => {
+    if (onJoinChat) {
+      onJoinChat(conversationId)
+    } else {
+      console.log('Joining chat with ID:', conversationId)
+      // TODO: Implement actual join chat functionality
+    }
+  }
+
+  const handleCreateChat = async (
+    conversationName: string
+  ): Promise<string> => {
+    if (onCreateChat) {
+      return await onCreateChat(conversationName)
+    } else {
+      // Mock implementation for testing - generates a 6-digit ID
+      console.log('Creating new chat with name:', conversationName)
+      await new Promise(resolve => setTimeout(resolve, 1000)) // Simulate API call
+      const mockId = Math.floor(100000 + Math.random() * 900000).toString()
+      console.log('Generated conversation ID:', mockId)
+      return mockId
+    }
+  }
+
   if (user) {
     return (
       <div className="flex min-h-[calc(100vh-120px)] flex-col items-center justify-center">
@@ -24,8 +57,8 @@ export default function WelcomeScreen({ user, onLogin }: WelcomeScreenProps) {
             <span className="italic font-bold">{user.email}</span>
           </p>
           <div className="flex gap-2 justify-center">
-            <Button>New party chat</Button>
-            <Button variant="outline">Join party chat</Button>
+            <NewChatModal onCreateChat={handleCreateChat} />
+            <JoinChatModal onJoinChat={handleJoinChat} />
           </div>
         </div>
       </div>
