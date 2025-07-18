@@ -24,6 +24,9 @@ function App() {
   const [showLogin, setShowLogin] = useState(false)
   const [currentConversation, setCurrentConversation] =
     useState<Conversation | null>(null)
+  const [createdConversations, setCreatedConversations] = useState<
+    Map<string, string>
+  >(new Map())
 
   // Show login dialog if user is not authenticated and not loading
   useEffect(() => {
@@ -45,6 +48,7 @@ function App() {
     logout()
     setShowLogin(true)
     setCurrentConversation(null)
+    setCreatedConversations(new Map())
   }
 
   const handleJoinChat = (conversationId: string) => {
@@ -64,11 +68,43 @@ function App() {
     await new Promise(resolve => setTimeout(resolve, 1000)) // Simulate API call
     const mockId = Math.floor(100000 + Math.random() * 900000).toString()
     console.log('Generated conversation ID:', mockId)
-    setCurrentConversation({
-      id: mockId,
-      name: conversationName,
-    })
+
+    // Store the conversation name for later use
+    setCreatedConversations(prev => new Map(prev).set(mockId, conversationName))
+
     return mockId
+  }
+
+  const handleGoToChat = (conversationId: string) => {
+    // Check if this is a newly created conversation
+    const conversationName = createdConversations.get(conversationId)
+
+    if (conversationName) {
+      // This is a newly created conversation
+      setCurrentConversation({
+        id: conversationId,
+        name: conversationName,
+      })
+      // Remove from temporary storage
+      setCreatedConversations(prev => {
+        const newMap = new Map(prev)
+        newMap.delete(conversationId)
+        return newMap
+      })
+    } else if (
+      currentConversation &&
+      currentConversation.id === conversationId
+    ) {
+      // Already in the right conversation, just ensure it's set
+      setCurrentConversation(currentConversation)
+    } else {
+      // This would typically fetch the conversation details from the API
+      // For now, we'll use a placeholder name
+      setCurrentConversation({
+        id: conversationId,
+        name: `Chat ${conversationId}`,
+      })
+    }
   }
 
   const handleSendMessage = (message: string) => {
@@ -118,6 +154,7 @@ function App() {
               onLogout={handleLogout}
               onJoinChat={handleJoinChat}
               onCreateChat={handleCreateChat}
+              onGoToChat={handleGoToChat}
             />
           )}
         </main>

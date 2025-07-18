@@ -15,6 +15,7 @@ interface WelcomeScreenProps {
   onLogout: () => void
   onJoinChat?: (conversationId: string) => void
   onCreateChat?: (conversationName: string) => Promise<string> | string
+  onGoToChat?: (conversationId: string) => void
 }
 
 export default function WelcomeScreen({
@@ -23,6 +24,7 @@ export default function WelcomeScreen({
   onLogout,
   onJoinChat,
   onCreateChat,
+  onGoToChat,
 }: WelcomeScreenProps) {
   if (user) {
     return (
@@ -43,7 +45,9 @@ export default function WelcomeScreen({
 
         {/* Action Buttons Section */}
         <div className="p-4 border-t bg-card flex gap-3 justify-center">
-          {onCreateChat && <NewChatModal onCreateChat={onCreateChat} />}
+          {onCreateChat && (
+            <NewChatModal onCreateChat={onCreateChat} onGoToChat={onGoToChat} />
+          )}
           {onJoinChat && <JoinChatModal onJoinChat={onJoinChat} />}
         </div>
       </div>

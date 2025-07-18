@@ -12,13 +12,17 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { showToast } from '@/lib/toast'
-import { Copy, Check } from 'lucide-react'
+import { Copy, Check, MessageCircle } from 'lucide-react'
 
 interface NewChatModalProps {
   onCreateChat: (conversationName: string) => Promise<string> | string
+  onGoToChat?: (conversationId: string) => void
 }
 
-export default function NewChatModal({ onCreateChat }: NewChatModalProps) {
+export default function NewChatModal({
+  onCreateChat,
+  onGoToChat,
+}: NewChatModalProps) {
   const [conversationName, setConversationName] = useState('')
   const [isOpen, setIsOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -36,7 +40,7 @@ export default function NewChatModal({ onCreateChat }: NewChatModalProps) {
           'Chat created successfully!',
           'Share the conversation ID with others to join.'
         )
-      } catch (error) {
+      } catch {
         showToast.error('Failed to create chat', 'Please try again.')
       } finally {
         setIsLoading(false)
@@ -63,12 +67,19 @@ export default function NewChatModal({ onCreateChat }: NewChatModalProps) {
           'Share this ID with others to join your chat.'
         )
         setTimeout(() => setCopied(false), 2000)
-      } catch (error) {
+      } catch {
         showToast.error(
           'Failed to copy to clipboard',
           'Please copy the ID manually.'
         )
       }
+    }
+  }
+
+  const handleGoToChat = () => {
+    if (conversationId && onGoToChat) {
+      onGoToChat(conversationId)
+      setIsOpen(false)
     }
   }
 
@@ -162,8 +173,14 @@ export default function NewChatModal({ onCreateChat }: NewChatModalProps) {
                 </p>
               </div>
             </div>
-            <DialogFooter>
-              <Button onClick={handleClose}>Done</Button>
+            <DialogFooter className="flex gap-2">
+              <Button variant="outline" onClick={handleClose}>
+                Done
+              </Button>
+              <Button onClick={handleGoToChat}>
+                <MessageCircle className="h-4 w-4 mr-2" />
+                Go to Chat
+              </Button>
             </DialogFooter>
           </>
         )}
