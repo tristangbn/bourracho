@@ -10,13 +10,10 @@ from bourracho.models import Conversation
 class ConversationsStore:
     def __init__(self, db_name: str):
         self.db_name = db_name
-        auth_kgws = {}
-        if config.MONGO_DB_PASSWORD and config.MONGO_DB_USERNAME:
-            auth_kgws = {"username": config.MONGO_DB_USERNAME, "password": config.MONGO_DB_PASSWORD}
-        self.client = MongoClient(config.MONGO_DB_URL, **auth_kgws)
+        self.client = MongoClient(config.MONGO_DB_URL)
         self.db = self.client[self.db_name]
         self.conversations_collection = self.db[config.CONVERSATIONS_COLLECTION]
-        logger.debug("Initialized ConversationsStore")
+        logger.info("Successfully initialized Conversations Store")
 
     def add_conversation(self, conversation: Conversation) -> None:
         Conversation.model_validate(conversation)
