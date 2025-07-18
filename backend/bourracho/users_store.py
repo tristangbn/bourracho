@@ -19,11 +19,13 @@ class UsersStore:
         self.users_collection = self.db[config.USERS_COLLECTION]
         logger.info("Successfully initialized Users Store")
 
+    @logger.catch
     def get_new_user(self, username: str, password: str) -> User:
         password_hash = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
         user = User(id=str(uuid.uuid4()), username=username, password_hash=password_hash)
         return user
 
+    @logger.catch
     def check_credentials(self, username: str, password: str) -> str | None:
         db_user = self.users_collection.find_one({"username": username})
         if not db_user:
@@ -36,6 +38,7 @@ class UsersStore:
             return None
         return user.id
 
+    @logger.catch
     def add_user(self, user: User) -> None:
         matching_usernames = self.users_collection.find_one({"username": user.username})
         if matching_usernames and user.username in matching_usernames:
@@ -44,6 +47,7 @@ class UsersStore:
         self.users_collection.insert_one(user.model_dump())
         logger.info(f"User with username {user.username} added to collection.")
 
+    @logger.catch
     def get_user(self, user_id: str) -> User | None:
         user = self.users_collection.find_one({"id": user_id})
         if not user:
@@ -51,6 +55,7 @@ class UsersStore:
             return None
         return User.model_validate(user)
 
+    @logger.catch
     def get_users(self, user_ids: list[str]) -> list[User]:
         if user_ids == "*":
             users = self.users_collection.find()
