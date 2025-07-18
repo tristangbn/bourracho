@@ -2,15 +2,20 @@ from datetime import datetime
 from typing import Annotated, Literal
 
 import emoji as emj
-from pydantic import AfterValidator, BaseModel, Discriminator, field_serializer
+from pydantic import AfterValidator, BaseModel, field_serializer
+
+
+class UserPayload(BaseModel):
+    username: str
+    password: str
 
 
 class User(BaseModel):
     id: str
-    name: str
+    username: str
+    password_hash: str
     pseudo: str | None = None
     location: str | None = None
-    is_admin: bool = False
 
 
 class React(BaseModel):
@@ -23,34 +28,22 @@ class React(BaseModel):
 
 
 class Message(BaseModel):
+    id: str = None
     content: str
-    issuer_id: str | None = None
-    id: str | None = None
-    timestamp: datetime | None = None
+    conversation_id: str
+    issuer_id: str
+    timestamp: datetime = None
     reacts: list[React] = []
 
 
-class ConversationMetadata(BaseModel):
-    name: str = ""
-    id: str | None = None
-    is_locked: bool = True
-
-
 class Conversation(BaseModel):
-    metadata: ConversationMetadata
-    messages: list[Message] = []
-
-
-class JsonConversationStoreModel(BaseModel):
-    type: Literal["json"] = "json"
-    db_dir: str
-    conversation_id: str | None = None
+    id: str = None
+    users_ids: list[str] = []
+    name: str = "Name me 😘"
+    is_locked: bool = True
 
 
 class MongoConversationStoreModel(BaseModel):
     type: Literal["mongo_db"] = "mongo_db"
     db_uri: str
     conversation_id: str | None = None
-
-
-ConversationStoresModel = Annotated[JsonConversationStoreModel | MongoConversationStoreModel, Discriminator("type")]

@@ -1,168 +1,228 @@
 import json
-import os
-import shutil
-import uuid
 
+import django
 from django.test import Client, TestCase
-
-from conversations_api import config
 
 
 class ConversationsApiTests(TestCase):
     def setUp(self):
-        if os.path.exists(config.REGISTRY_PERSISTENCE_DIR):
-            shutil.rmtree(config.REGISTRY_PERSISTENCE_DIR)
-        os.makedirs(config.REGISTRY_PERSISTENCE_DIR)
-
-        self.client = Client()
+        self.client: django.test.Client = Client()
         self.api_prefix = "/api/"
-        self.userid_1 = str(uuid.uuid4())
-        self.userid_2 = str(uuid.uuid4())
+
+    def test_register_and_login(self):
+        payload = {"username": "alice", "password": "secret123"}
+        resp = self.client.post(
+            f"{self.api_prefix}register/", data=json.dumps(payload), content_type="application/json"
+        )
+        self.assertEqual(resp.status_code, 200)
+        user = resp.json()
+        self.assertTrue(user)
+
+        # Try login
+        resp = self.client.post(f"{self.api_prefix}login/", data=json.dumps(payload), content_type="application/json")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("username", resp.json())
+        self.assertEqual(resp.json()["username"], "alice")
+
+        # Get users
+        resp = self.client.get(f"{self.api_prefix}users", query_params={"users_ids": [user["id"]]})
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()[0]["username"], "alice")
 
     def test_create_conversation(self):
         # Register user
-        user_test = {"id": self.userid_1, "name": "Test User", "is_admin": True}
-        resp = self.client.post(f"{self.api_prefix}auth/", data=json.dumps(user_test), content_type="application/json")
-        self.assertEqual(resp.status_code, 200)
-        # Create conversation
+        payload = {"username": "bob", "password": "secret456"}
         resp = self.client.post(
-            f"{self.api_prefix}conversations/{user_test['id']}/create",
-            data=json.dumps({"name": "Test"}),
-            content_type="application/json",
+            f"{self.api_prefix}register/", data=json.dumps(payload), content_type="application/json"
         )
         self.assertEqual(resp.status_code, 200)
-        self.assertIn("conversation_id", resp.json())
-        self.assertTrue("conversation_id" in resp.json())
-        conversation_id = resp.json()["conversation_id"]
-        self.assertTrue(len(conversation_id) == 6)
+        user = resp.json()
+        self.assertTrue(user)
+        user_id = user["id"]
+        # Create conversation (minimal required fields)
+        conversation = {"name": "Test"}
+        resp = self.client.post(
+            f"{self.api_prefix}chat/",
+            data=json.dumps(conversation),
+            content_type="application/json",
+            **{"HTTP_USER_ID": user_id},
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("id", resp.json())
+        conversation_id = resp.json()["id"]
+        self.assertTrue(conversation_id)
 
     def test_join_conversation(self):
-        user_test_1 = {"id": self.userid_1, "name": "Test User", "is_admin": True}
-        user_test_2 = {"id": self.userid_2, "name": "Another User", "is_admin": False}
+        # Register two users
+        payload1 = {"username": "user1", "password": "pw1"}
+        payload2 = {"username": "user2", "password": "pw2"}
         resp = self.client.post(
-            f"{self.api_prefix}auth/", data=json.dumps(user_test_1), content_type="application/json"
+            f"{self.api_prefix}register/", data=json.dumps(payload1), content_type="application/json"
         )
         self.assertEqual(resp.status_code, 200)
-        # Create conversation
+        user_id1 = resp.json()["id"]
         resp = self.client.post(
-            f"{self.api_prefix}conversations/{user_test_1['id']}/create",
-            data=json.dumps({"name": "Test"}),
+            f"{self.api_prefix}register/", data=json.dumps(payload2), content_type="application/json"
+        )
+        self.assertEqual(resp.status_code, 200)
+        user_id2 = resp.json()["id"]
+        # Create conversation with user1
+        conversation = {"name": "TestJoin", "is_locked": False}
+        resp = self.client.post(
+            f"{self.api_prefix}chat/",
+            data=json.dumps(conversation),
             content_type="application/json",
+            **{"HTTP_USER_ID": user_id1},
         )
         self.assertEqual(resp.status_code, 200)
-        self.assertIn("conversation_id", resp.json())
-        self.conversation_id = resp.json()["conversation_id"]
-        # Join conversation
+        self.assertEqual(resp.json()["users_ids"], [user_id1])
+        conversation_id = resp.json()["id"]
+        # Join conversation with user2
         resp = self.client.post(
-            f"{self.api_prefix}conversations/{user_test_2['id']}/join",
-            query_params={"conversation_id": self.conversation_id},
+            f"{self.api_prefix}chat/{conversation_id}/join",
             content_type="application/json",
+            **{"HTTP_USER_ID": user_id2},
         )
         self.assertEqual(resp.status_code, 200)
-        self.assertIn("status", resp.json())
-        self.assertEqual(resp.json()["status"], "success")
+        self.assertIn("users_ids", resp.json())
+        self.assertEqual(resp.json()["users_ids"], [user_id1, user_id2])
+        # Join again with user1 (idempotent)
         resp = self.client.post(
-            f"{self.api_prefix}conversations/{user_test_1['id']}/join",
-            query_params={"conversation_id": self.conversation_id},
+            f"{self.api_prefix}chat/{conversation_id}/join",
             content_type="application/json",
+            **{"HTTP_USER_ID": user_id1},
         )
         self.assertEqual(resp.status_code, 200)
-        self.assertIn("status", resp.json())
-        self.assertEqual(resp.json()["status"], "success")
+        self.assertIn("users_ids", resp.json())
+        self.assertCountEqual(resp.json()["users_ids"], [user_id1, user_id2])
+
+        resp = self.client.get(
+            f"{self.api_prefix}users",
+            query_params={"users_ids": [user_id1, user_id2]},
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.json()), 2)
+        self.assertEqual(resp.json()[0]["username"], "user1")
+        self.assertEqual(resp.json()[0]["id"], user_id1)
+        self.assertEqual(resp.json()[1]["username"], "user2")
+        self.assertEqual(resp.json()[1]["id"], user_id2)
 
     def test_post_message(self):
-        user_test_1 = {"id": self.userid_1, "name": "Test User", "is_admin": True}
+        # Register user
+        payload = {"username": "msguser", "password": "pwmsg"}
         resp = self.client.post(
-            f"{self.api_prefix}auth/", data=json.dumps(user_test_1), content_type="application/json"
+            f"{self.api_prefix}register/", data=json.dumps(payload), content_type="application/json"
         )
         self.assertEqual(resp.status_code, 200)
+        user_id = resp.json()["id"]
         # Create conversation
+        conversation = {"name": "MsgTest", "is_locked": False}
         resp = self.client.post(
-            f"{self.api_prefix}conversations/{user_test_1['id']}/create",
-            data=json.dumps({"name": "Test"}),
+            f"{self.api_prefix}chat/",
+            data=json.dumps(conversation),
             content_type="application/json",
+            **{"HTTP_USER_ID": user_id},
         )
         self.assertEqual(resp.status_code, 200)
-        self.assertIn("conversation_id", resp.json())
-        self.conversation_id = resp.json()["conversation_id"]
+        conversation_id = resp.json()["id"]
         # Post message
-        message_url = f"{self.api_prefix}messages/{user_test_1['id']}/{self.conversation_id}"
-        msg = {"content": "Hello world!"}
+        msg = {"content": "Hello world!", "issuer_id": user_id, "conversation_id": conversation_id}
         resp = self.client.post(
-            message_url,
+            f"{self.api_prefix}chat/{conversation_id}/messages/",
             json.dumps(msg),
             content_type="application/json",
+            **{"HTTP_USER_ID": user_id},
         )
         self.assertEqual(resp.status_code, 200)
-        self.assertEqual(resp.json()["status"], "success")
+        self.assertEqual(resp.json()["content"], "Hello world!")
 
     def test_full_conversation_flow(self):
-        user_1 = {"id": self.userid_1, "name": "Test User", "is_admin": True}
-        user_2 = {"id": self.userid_2, "name": "Alice", "pseudo": "AA", "is_admin": False}
-        # Register user
-        resp = self.client.post(f"{self.api_prefix}auth/", data=json.dumps(user_1), content_type="application/json")
-        self.assertEqual(resp.status_code, 200)
-        # Create conversation
+        # Register two users
+        payload1 = {"username": "flowuser1", "password": "pwflow1"}
+        payload2 = {"username": "flowuser2", "password": "pwflow2"}
         resp = self.client.post(
-            f"{self.api_prefix}conversations/{user_1['id']}/create",
-            data=json.dumps({"name": "TestMeta"}),
-            content_type="application/json",
+            f"{self.api_prefix}register/", data=json.dumps(payload1), content_type="application/json"
         )
         self.assertEqual(resp.status_code, 200)
-        conversation_id = resp.json()["conversation_id"]
+        user_id1 = resp.json()["id"]
+        resp = self.client.post(
+            f"{self.api_prefix}register/", data=json.dumps(payload2), content_type="application/json"
+        )
+        self.assertEqual(resp.status_code, 200)
+        user_id2 = resp.json()["id"]
+        # Create conversation with user1
+        conversation = {"name": "TestMeta", "is_locked": False}
+        resp = self.client.post(
+            f"{self.api_prefix}chat/",
+            data=json.dumps(conversation),
+            content_type="application/json",
+            **{"HTTP_USER_ID": user_id1},
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()["users_ids"], [user_id1])
+        conversation_id = resp.json()["id"]
+
+        # Get users
+        resp = self.client.get(
+            f"{self.api_prefix}users",
+            query_params={"users_ids": [user_id1]},
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()[0]["username"], "flowuser1")
         # Join conversation (should be idempotent)
-        join_url = f"{self.api_prefix}conversations/{user_2['id']}/join"
-        resp = self.client.post(
-            join_url, query_params={"conversation_id": conversation_id}, content_type="application/json"
-        )
+        join_url = f"{self.api_prefix}chat/{conversation_id}/join"
+        resp = self.client.post(join_url, content_type="application/json", **{"HTTP_USER_ID": user_id2})
         self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()["users_ids"], [user_id1, user_id2])
         # Post message
-        message_url = f"{self.api_prefix}messages/{user_2['id']}/{conversation_id}"
-        msg = {"content": "Hello world!"}
+
+        msg = {"content": "Hello world!", "conversation_id": conversation_id, "issuer_id": user_id2}
         resp = self.client.post(
-            message_url,
-            json.dumps(msg),
+            f"{self.api_prefix}chat/{conversation_id}/messages/",
+            data=json.dumps(msg),
             content_type="application/json",
+            **{"HTTP_USER_ID": user_id2},
         )
         self.assertEqual(resp.status_code, 200)
-        self.assertEqual(resp.json()["status"], "success")
-        # Post metadata
-        metadata_url = f"{self.api_prefix}metadata/{user_2['id']}/{conversation_id}"
-        meta = {"name": "conv name"}
-        resp = self.client.post(metadata_url, data=json.dumps(meta), content_type="application/json")
+        self.assertEqual(resp.json()["content"], "Hello world!")
+        # Update conversation
+
+        meta = {"name": "conv name", "is_locked": False}
+        resp = self.client.patch(
+            f"{self.api_prefix}chat/{conversation_id}",
+            data=json.dumps(meta),
+            content_type="application/json",
+            **{"HTTP_USER_ID": user_id2},
+        )
         self.assertEqual(resp.status_code, 200)
         # Get messages
-        get_messages_url = f"{self.api_prefix}messages/{user_2['id']}/{conversation_id}/get"
-        resp = self.client.get(get_messages_url)
+        resp = self.client.get(f"{self.api_prefix}chat/{conversation_id}/messages/", **{"HTTP_USER_ID": user_id2})
         self.assertEqual(resp.status_code, 200)
-        self.assertIn("messages", resp.json())
-        self.assertTrue(isinstance(resp.json()["messages"], list))
-        self.assertIn("Hello world!", json.dumps(resp.json()["messages"]))
-        # Get metadata
-        get_metadata_url = f"{self.api_prefix}metadata/{user_2['id']}/{conversation_id}/get"
-        resp = self.client.get(get_metadata_url)
+        self.assertTrue(isinstance(resp.json(), list))
+        self.assertIn("Hello world!", json.dumps(resp.json()))
+        # Get conversation
+        resp = self.client.get(f"{self.api_prefix}chat/{conversation_id}", **{"HTTP_USER_ID": user_id2})
         self.assertEqual(resp.status_code, 200)
-        self.assertIn("metadata", resp.json())
+        self.assertIn("name", resp.json())
+        self.assertEqual(resp.json()["name"], "conv name")
         # List conversations for user
-        list_url = f"{self.api_prefix}conversations/{user_2['id']}/get"
-        resp = self.client.get(list_url)
+
+        resp = self.client.get(f"{self.api_prefix}chat/", **{"HTTP_USER_ID": user_id2})
         self.assertEqual(resp.status_code, 200)
-        self.assertIn("conversations", resp.json())
-        resp = resp.json()["conversations"]
-        self.assertTrue(len(resp) == 1)
-        self.assertTrue("conv name" in json.loads(resp[0])["name"])
+        self.assertTrue(len(resp.json()) == 1)
+        self.assertTrue("conv name" in resp.json()[0]["name"])
         # React to message
-        react_url = f"{self.api_prefix}react/{user_2['id']}/{conversation_id}"
+        patch_message_url = f"{self.api_prefix}chat/{conversation_id}"
+        get_messages_url = f"{self.api_prefix}chat/{conversation_id}/messages/"
         messages = self.client.get(get_messages_url)
-        message_id = json.loads(messages.json()["messages"][0])["id"]
-        resp = self.client.post(
-            react_url,
-            data=json.dumps({"emoji": "👍"}),
+        message_id = messages.json()[0]["id"]
+        resp = self.client.patch(
+            patch_message_url,
+            data=json.dumps({"id": message_id, "reacts": [{"emoji": "👍", "issuer_id": user_id2}]}),
             content_type="application/json",
-            query_params={"message_id": message_id},
+            **{"HTTP_USER_ID": user_id2},
         )
         self.assertEqual(resp.status_code, 200)
         messages = self.client.get(get_messages_url)
         self.assertEqual(messages.status_code, 200)
-        self.assertIn("messages", messages.json())
-        self.assertTrue(isinstance(messages.json()["messages"], list))
+        self.assertTrue(isinstance(messages.json(), list))

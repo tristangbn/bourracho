@@ -1,20 +1,15 @@
 import uuid
 from datetime import datetime
-from typing import Any, Dict
 
 from loguru import logger
 from ninja import NinjaAPI, Schema
 from pydantic import ValidationError
-from pydantic.type_adapter import TypeAdapter
 
-from bourracho.conversations_registry import ConversationsRegistry
-from bourracho.models import ConversationMetadata, ConversationStoresModel, Message, React, User
+from bourracho.models import Conversation, Message, User, UserPayload
+from bourracho.stores_registry import StoresRegistry
 from conversations_api import config
 
-registry = ConversationsRegistry(
-    conversations_registry_id=config.REGISTRY_ID,
-    persistence_dir=config.REGISTRY_PERSISTENCE_DIR,
-)
+registry = StoresRegistry(db_name=config.MONGO_DB_NAME)
 
 api = NinjaAPI()
 
@@ -23,31 +18,38 @@ class ErrorResponse(Schema):
     error: str
 
 
-@api.post("auth/", response={200: Dict[str, str], 500: ErrorResponse})
-def register_user(request, payload: User):
+@api.post("register/", response={200: dict, 500: ErrorResponse})
+def register_user(request, user_credentials: UserPayload) -> User:
     logger.info("Received request to register user.")
     try:
-        user = User.model_validate(payload)
-        if not user.id:
-            raise ValueError("User ID is required to register user.")
-        registry.register_user(user=user)
+        user = registry.register_user(username=user_credentials.username, password=user_credentials.password)
         logger.info(f"User registered with id: {user.id}")
-        return {"user_id": user.id}
+        return 200, registry.get_user(user_id=user.id).model_dump(exclude="password_hash")
     except Exception as e:
         logger.error(f"Unexpected error during user registration: {e}")
         return 500, {"error": str(e)}
 
 
-@api.post("conversations/{user_id}/create", response={200: Dict[str, str], 422: ErrorResponse, 500: ErrorResponse})
-def create_conversation(request, user_id: str, metadata: ConversationMetadata):
+@api.post("login/", response={200: User, 500: ErrorResponse})
+def login(request, user_credentials: UserPayload):
+    logger.info("Received request to login user.")
+    try:
+        user_id = registry.check_credentials(username=user_credentials.username, password=user_credentials.password)
+        logger.info(f"User with id {user_id} logged in.")
+        return 200, registry.get_user(user_id=user_id)
+    except Exception as e:
+        logger.error(f"Unexpected error during user login: {e}")
+        return 500, {"error": str(e)}
+
+
+@api.post("chat/", response={200: Conversation, 422: ErrorResponse, 500: ErrorResponse})
+def create_conversation(request, conversation: Conversation):
+    user_id = request.headers.get("user_id")
     logger.info("Received request to create conversation.")
     try:
-        conversation_store_model = TypeAdapter(ConversationStoresModel).validate_python(config.CONVERSATION_STORE_MODEL)
-        conversation_id = registry.create_conversation(
-            user_id=user_id, metadata=metadata, conversation_store_model=conversation_store_model
-        )
+        conversation_id = registry.create_conversation(user_id=user_id, conversation=conversation)
         logger.info(f"Conversation created with id: {conversation_id}")
-        return {"conversation_id": conversation_id}
+        return 200, registry.get_conversation(conversation_id=conversation_id)
     except ValidationError as ve:
         logger.warning(f"Validation error during conversation creation: {ve}")
         return 422, {"error": f"Validation error: {ve}"}
@@ -56,31 +58,32 @@ def create_conversation(request, user_id: str, metadata: ConversationMetadata):
         return 500, {"error": str(e)}
 
 
-@api.post("conversations/{user_id}/join", response={200: Dict[str, str], 500: ErrorResponse})
-def join_conversation(request, user_id: str, conversation_id: str):
+@api.post("chat/{conversation_id}/join", response={200: Conversation, 500: ErrorResponse})
+def join_conversation(request, conversation_id: str):
+    user_id = request.headers.get("user_id")
     try:
         logger.info(f"Received request to join conversation {conversation_id} for user {user_id}.")
         registry.join_conversation(user_id=user_id, conversation_id=conversation_id)
         logger.info(f"User {user_id} joined conversation {conversation_id}.")
-        return {"status": "success"}
+        return 200, registry.get_conversation(conversation_id=conversation_id)
     except Exception as e:
         logger.error(f"Unexpected error joining conversation {conversation_id} for user {user_id}: {e}")
         return 500, {"error": str(e)}
 
 
-@api.post(
-    "messages/{user_id}/{conversation_id}", response={200: Dict[str, str], 422: ErrorResponse, 500: ErrorResponse}
-)
-def post_message(request, user_id: str, conversation_id: str, message: Message):
+@api.post("chat/{conversation_id}/messages/", response={200: Message, 422: ErrorResponse, 500: ErrorResponse})
+def post_message(request, conversation_id: str, message: Message):
+    user_id = request.headers.get("user_id")
     try:
         logger.info(f"Received request to post message {message} to conversation {conversation_id}.")
         message.issuer_id = user_id
         message.id = message.id or str(uuid.uuid4())
         message.timestamp = message.timestamp or datetime.now()
         message = Message.model_validate(message)
-        registry.add_message(conversation_id=conversation_id, message=message)
+        message.conversation_id = conversation_id
+        registry.add_message(message=message)
         logger.info(f"Message posted to conversation {conversation_id}.")
-        return {"status": "success"}
+        return 200, message
     except ValidationError as ve:
         logger.warning(f"Validation error posting message to {conversation_id}: {ve}")
         return 422, {"error": f"Validation error: {ve}"}
@@ -89,15 +92,14 @@ def post_message(request, user_id: str, conversation_id: str, message: Message):
         return 500, {"error": str(e)}
 
 
-@api.post(
-    "metadata/{user_id}/{conversation_id}", response={200: Dict[str, str], 422: ErrorResponse, 500: ErrorResponse}
-)
-def post_metadata(request, user_id: str, conversation_id: str, metadata: ConversationMetadata):
+@api.patch("chat/{conversation_id}", response={200: Conversation, 422: ErrorResponse, 500: ErrorResponse})
+def patch_conversation(request, conversation_id: str, conversation: Conversation):
     try:
         logger.info(f"Received request to update metadata for conversation {conversation_id}.")
-        registry.update_metadata(conversation_id=conversation_id, metadata_dict=metadata.model_dump())
+        conversation.id = conversation_id
+        registry.update_conversation(conversation=conversation)
         logger.info(f"Metadata updated for conversation {conversation_id}.")
-        return {"status": "success"}
+        return 200, registry.get_conversation(conversation_id=conversation_id)
     except ValidationError as ve:
         logger.warning(f"Validation error updating metadata for {conversation_id}: {ve}")
         return 422, {"error": f"Validation error: {ve}"}
@@ -106,67 +108,70 @@ def post_metadata(request, user_id: str, conversation_id: str, metadata: Convers
         return 500, {"error": str(e)}
 
 
-@api.get("messages/{user_id}/{conversation_id}/get", response={200: Dict[str, Any], 500: ErrorResponse})
-def get_messages(request, user_id: str, conversation_id: str):
+@api.get("chat/{conversation_id}/messages/", response={200: list[Message], 500: ErrorResponse})
+def get_messages(request, conversation_id: str):
     try:
         logger.info(f"Received request to get messages for conversation {conversation_id}.")
         messages = registry.get_messages(conversation_id=conversation_id)
         logger.info(f"Fetched {len(messages)} messages for conversation {conversation_id}.")
-        return {"messages": [message.model_dump_json() for message in messages]}
+        return 200, messages
     except Exception as e:
         logger.error(f"Error fetching messages for conversation {conversation_id}: {e}")
         return 500, {"error": str(e)}
 
 
-@api.get("metadata/{user_id}/{conversation_id}/get", response={200: Dict[str, Any], 500: ErrorResponse})
-def get_metadata(request, user_id: str, conversation_id: str):
+@api.get("chat/{conversation_id}", response={200: Conversation, 500: ErrorResponse})
+def get_conversation(request, conversation_id: str):
     try:
         logger.info(f"Received request to get metadata for conversation {conversation_id}.")
-        metadata = registry.get_metadata(conversation_id=conversation_id)
+        conversation = registry.get_conversation(conversation_id=conversation_id)
         logger.info(f"Fetched metadata for conversation {conversation_id}.")
-        return {"metadata": metadata.model_dump_json()}
+        return 200, conversation
     except Exception as e:
         logger.error(f"Error fetching metadata for conversation {conversation_id}: {e}")
         return 500, {"error": str(e)}
 
 
-@api.get("users/{user_id}/{conversation_id}/get", response={200: Dict[str, Any], 500: ErrorResponse})
-def get_users(request, user_id: str, conversation_id: str):
+@api.get("/users", response={200: list[User], 500: ErrorResponse})
+def get_users(request):
+    logger.info("Received request to get users.")
+    users_ids = request.GET.getlist("users_ids", "*")
+    logger.info(f"Received request to get users for user_ids {users_ids}.")
     try:
-        logger.info(f"Received request to get users for conversation {conversation_id}.")
-        users = registry.get_users(conversation_id=conversation_id)
-        logger.info(f"Fetched {len(users)} users for conversation {conversation_id}.")
-        return {"users": [user.model_dump_json() for user in users]}
+        users = registry.get_users(user_ids=users_ids)
+        logger.info(f"Fetched {len(users)} users for user_ids {users_ids}.")
+        return 200, users
     except Exception as e:
-        logger.error(f"Error fetching users for conversation {conversation_id}: {e}")
+        logger.error(f"Error fetching users for user_ids {users_ids}: {e}")
         return 500, {"error": str(e)}
 
 
-@api.get("conversations/{user_id}/get", response={200: Dict[str, Any], 500: ErrorResponse})
-def list_conversations(request, user_id: str):
+@api.get("chat/", response={200: list[Conversation], 500: ErrorResponse})
+def list_conversations(request):
+    user_id = request.headers.get("user_id")
     try:
         logger.info("Received request to list all conversations.")
-        conversations_metadata = registry.list_conversations(user_id=user_id)
-        result = [meta.model_dump_json() for meta in conversations_metadata]
-        logger.info(f"Fetched {len(result)} conversations.")
-        return {"conversations": result}
+        conversations = registry.list_conversations(user_id=user_id)
+        logger.info(f"Fetched {len(conversations)} conversations.")
+        return 200, conversations
     except Exception as e:
         logger.error(f"Error listing conversations: {e}")
         return 500, {"error": str(e)}
 
 
-@api.post("react/{user_id}/{conversation_id}", response={200: Dict[str, Any], 500: ErrorResponse})
-def post_react(request, user_id: str, conversation_id: str, message_id: str, react: React):
+@api.patch("chat/{conversation_id}/messages", response={200: dict, 500: ErrorResponse})
+def patch_message(request, conversation_id: str, message: Message):
+    if not message.id:
+        raise ValueError("Message id is required to update message")
     try:
-        logger.info(f"Received request to post react for conversation {conversation_id}.")
-        react.issuer_id = user_id
-        registry.add_react(
-            conversation_id=conversation_id,
-            message_id=message_id,
-            react=react,
-        )
-        logger.info(f"React posted for conversation {conversation_id}.")
-        return {"react": react.model_dump_json()}
+        logger.info(f"Received request to update message {message} for conversation {conversation_id}.")
+        message.issuer_id = request.headers.get("user_id")
+        if message.reacts:
+            registry.add_react(react=message.reacts[0], message_id=message.id)
+            del message.reacts
+        registry.update_message(message=message)
+        logger.info(f"Message {message} updated for conversation {conversation_id}.")
+        return 200, registry.get_message(message_id=message.id)
     except Exception as e:
-        logger.error(f"Error posting react for conversation {conversation_id}: {e}")
+        logger.error(f"Error updating message {message} for conversation {conversation_id}: {e}")
         return 500, {"error": str(e)}

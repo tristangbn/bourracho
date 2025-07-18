@@ -1,8 +1,10 @@
 __all__ = [
     "config",
-    "conversation_store",
+    "conversations_store",
+    "messages_store",
+    "users_store",
     "models",
-    "conversations_registry",
+    "stores_registry",
 ]
 
-from bourracho import config, conversation_store, conversations_registry, models
+from bourracho import config, conversations_store, messages_store, models, stores_registry, users_store
