@@ -5,33 +5,36 @@ import type {
   ConversationsApiApiRegisterUserData,
   ConversationsApiApiRegisterUserResponses,
   ConversationsApiApiRegisterUserErrors,
+  ConversationsApiApiLoginData,
+  ConversationsApiApiLoginResponses,
+  ConversationsApiApiLoginErrors,
+  ConversationsApiApiListConversationsData,
+  ConversationsApiApiListConversationsResponses,
+  ConversationsApiApiListConversationsErrors,
   ConversationsApiApiCreateConversationData,
   ConversationsApiApiCreateConversationResponses,
   ConversationsApiApiCreateConversationErrors,
   ConversationsApiApiJoinConversationData,
   ConversationsApiApiJoinConversationResponses,
   ConversationsApiApiJoinConversationErrors,
-  ConversationsApiApiPostMessageData,
-  ConversationsApiApiPostMessageResponses,
-  ConversationsApiApiPostMessageErrors,
-  ConversationsApiApiPostMetadataData,
-  ConversationsApiApiPostMetadataResponses,
-  ConversationsApiApiPostMetadataErrors,
   ConversationsApiApiGetMessagesData,
   ConversationsApiApiGetMessagesResponses,
   ConversationsApiApiGetMessagesErrors,
-  ConversationsApiApiGetMetadataData,
-  ConversationsApiApiGetMetadataResponses,
-  ConversationsApiApiGetMetadataErrors,
+  ConversationsApiApiPostMessageData,
+  ConversationsApiApiPostMessageResponses,
+  ConversationsApiApiPostMessageErrors,
+  ConversationsApiApiGetConversationData,
+  ConversationsApiApiGetConversationResponses,
+  ConversationsApiApiGetConversationErrors,
+  ConversationsApiApiPatchConversationData,
+  ConversationsApiApiPatchConversationResponses,
+  ConversationsApiApiPatchConversationErrors,
   ConversationsApiApiGetUsersData,
   ConversationsApiApiGetUsersResponses,
   ConversationsApiApiGetUsersErrors,
-  ConversationsApiApiListConversationsData,
-  ConversationsApiApiListConversationsResponses,
-  ConversationsApiApiListConversationsErrors,
-  ConversationsApiApiPostReactData,
-  ConversationsApiApiPostReactResponses,
-  ConversationsApiApiPostReactErrors,
+  ConversationsApiApiPatchMessageData,
+  ConversationsApiApiPatchMessageResponses,
+  ConversationsApiApiPatchMessageErrors,
 } from './types.gen'
 import { client as _heyApiClient } from './client.gen'
 
@@ -56,7 +59,7 @@ export type Options<
  * Register User
  */
 export const conversationsApiApiRegisterUser = <
-  ThrowOnError extends boolean = false,
+  ThrowOnError extends boolean = true,
 >(
   options: Options<ConversationsApiApiRegisterUserData, ThrowOnError>
 ) => {
@@ -66,7 +69,7 @@ export const conversationsApiApiRegisterUser = <
     ThrowOnError
   >({
     responseType: 'json',
-    url: '/api/auth/',
+    url: '/api/register/',
     ...options,
     headers: {
       'Content-Type': 'application/json',
@@ -76,10 +79,50 @@ export const conversationsApiApiRegisterUser = <
 }
 
 /**
+ * Login
+ */
+export const conversationsApiApiLogin = <ThrowOnError extends boolean = true>(
+  options: Options<ConversationsApiApiLoginData, ThrowOnError>
+) => {
+  return (options.client ?? _heyApiClient).post<
+    ConversationsApiApiLoginResponses,
+    ConversationsApiApiLoginErrors,
+    ThrowOnError
+  >({
+    responseType: 'json',
+    url: '/api/login/',
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    },
+  })
+}
+
+/**
+ * List Conversations
+ */
+export const conversationsApiApiListConversations = <
+  ThrowOnError extends boolean = true,
+>(
+  options?: Options<ConversationsApiApiListConversationsData, ThrowOnError>
+) => {
+  return (options?.client ?? _heyApiClient).get<
+    ConversationsApiApiListConversationsResponses,
+    ConversationsApiApiListConversationsErrors,
+    ThrowOnError
+  >({
+    responseType: 'json',
+    url: '/api/chat/',
+    ...options,
+  })
+}
+
+/**
  * Create Conversation
  */
 export const conversationsApiApiCreateConversation = <
-  ThrowOnError extends boolean = false,
+  ThrowOnError extends boolean = true,
 >(
   options: Options<ConversationsApiApiCreateConversationData, ThrowOnError>
 ) => {
@@ -89,7 +132,7 @@ export const conversationsApiApiCreateConversation = <
     ThrowOnError
   >({
     responseType: 'json',
-    url: '/api/conversations/{user_id}/create',
+    url: '/api/chat/',
     ...options,
     headers: {
       'Content-Type': 'application/json',
@@ -102,7 +145,7 @@ export const conversationsApiApiCreateConversation = <
  * Join Conversation
  */
 export const conversationsApiApiJoinConversation = <
-  ThrowOnError extends boolean = false,
+  ThrowOnError extends boolean = true,
 >(
   options: Options<ConversationsApiApiJoinConversationData, ThrowOnError>
 ) => {
@@ -112,54 +155,8 @@ export const conversationsApiApiJoinConversation = <
     ThrowOnError
   >({
     responseType: 'json',
-    url: '/api/conversations/{user_id}/join',
+    url: '/api/chat/{conversation_id}/join',
     ...options,
-  })
-}
-
-/**
- * Post Message
- */
-export const conversationsApiApiPostMessage = <
-  ThrowOnError extends boolean = false,
->(
-  options: Options<ConversationsApiApiPostMessageData, ThrowOnError>
-) => {
-  return (options.client ?? _heyApiClient).post<
-    ConversationsApiApiPostMessageResponses,
-    ConversationsApiApiPostMessageErrors,
-    ThrowOnError
-  >({
-    responseType: 'json',
-    url: '/api/messages/{user_id}/{conversation_id}',
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
-  })
-}
-
-/**
- * Post Metadata
- */
-export const conversationsApiApiPostMetadata = <
-  ThrowOnError extends boolean = false,
->(
-  options: Options<ConversationsApiApiPostMetadataData, ThrowOnError>
-) => {
-  return (options.client ?? _heyApiClient).post<
-    ConversationsApiApiPostMetadataResponses,
-    ConversationsApiApiPostMetadataErrors,
-    ThrowOnError
-  >({
-    responseType: 'json',
-    url: '/api/metadata/{user_id}/{conversation_id}',
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
   })
 }
 
@@ -167,7 +164,7 @@ export const conversationsApiApiPostMetadata = <
  * Get Messages
  */
 export const conversationsApiApiGetMessages = <
-  ThrowOnError extends boolean = false,
+  ThrowOnError extends boolean = true,
 >(
   options: Options<ConversationsApiApiGetMessagesData, ThrowOnError>
 ) => {
@@ -177,27 +174,73 @@ export const conversationsApiApiGetMessages = <
     ThrowOnError
   >({
     responseType: 'json',
-    url: '/api/messages/{user_id}/{conversation_id}/get',
+    url: '/api/chat/{conversation_id}/messages/',
     ...options,
   })
 }
 
 /**
- * Get Metadata
+ * Post Message
  */
-export const conversationsApiApiGetMetadata = <
-  ThrowOnError extends boolean = false,
+export const conversationsApiApiPostMessage = <
+  ThrowOnError extends boolean = true,
 >(
-  options: Options<ConversationsApiApiGetMetadataData, ThrowOnError>
+  options: Options<ConversationsApiApiPostMessageData, ThrowOnError>
 ) => {
-  return (options.client ?? _heyApiClient).get<
-    ConversationsApiApiGetMetadataResponses,
-    ConversationsApiApiGetMetadataErrors,
+  return (options.client ?? _heyApiClient).post<
+    ConversationsApiApiPostMessageResponses,
+    ConversationsApiApiPostMessageErrors,
     ThrowOnError
   >({
     responseType: 'json',
-    url: '/api/metadata/{user_id}/{conversation_id}/get',
+    url: '/api/chat/{conversation_id}/messages/',
     ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    },
+  })
+}
+
+/**
+ * Get Conversation
+ */
+export const conversationsApiApiGetConversation = <
+  ThrowOnError extends boolean = true,
+>(
+  options: Options<ConversationsApiApiGetConversationData, ThrowOnError>
+) => {
+  return (options.client ?? _heyApiClient).get<
+    ConversationsApiApiGetConversationResponses,
+    ConversationsApiApiGetConversationErrors,
+    ThrowOnError
+  >({
+    responseType: 'json',
+    url: '/api/chat/{conversation_id}',
+    ...options,
+  })
+}
+
+/**
+ * Patch Conversation
+ */
+export const conversationsApiApiPatchConversation = <
+  ThrowOnError extends boolean = true,
+>(
+  options: Options<ConversationsApiApiPatchConversationData, ThrowOnError>
+) => {
+  return (options.client ?? _heyApiClient).patch<
+    ConversationsApiApiPatchConversationResponses,
+    ConversationsApiApiPatchConversationErrors,
+    ThrowOnError
+  >({
+    responseType: 'json',
+    url: '/api/chat/{conversation_id}',
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    },
   })
 }
 
@@ -205,55 +248,36 @@ export const conversationsApiApiGetMetadata = <
  * Get Users
  */
 export const conversationsApiApiGetUsers = <
-  ThrowOnError extends boolean = false,
+  ThrowOnError extends boolean = true,
 >(
-  options: Options<ConversationsApiApiGetUsersData, ThrowOnError>
+  options?: Options<ConversationsApiApiGetUsersData, ThrowOnError>
 ) => {
-  return (options.client ?? _heyApiClient).get<
+  return (options?.client ?? _heyApiClient).get<
     ConversationsApiApiGetUsersResponses,
     ConversationsApiApiGetUsersErrors,
     ThrowOnError
   >({
     responseType: 'json',
-    url: '/api/users/{user_id}/{conversation_id}/get',
+    url: '/api/users',
     ...options,
   })
 }
 
 /**
- * List Conversations
+ * Patch Message
  */
-export const conversationsApiApiListConversations = <
-  ThrowOnError extends boolean = false,
+export const conversationsApiApiPatchMessage = <
+  ThrowOnError extends boolean = true,
 >(
-  options: Options<ConversationsApiApiListConversationsData, ThrowOnError>
+  options: Options<ConversationsApiApiPatchMessageData, ThrowOnError>
 ) => {
-  return (options.client ?? _heyApiClient).get<
-    ConversationsApiApiListConversationsResponses,
-    ConversationsApiApiListConversationsErrors,
+  return (options.client ?? _heyApiClient).patch<
+    ConversationsApiApiPatchMessageResponses,
+    ConversationsApiApiPatchMessageErrors,
     ThrowOnError
   >({
     responseType: 'json',
-    url: '/api/conversations/{user_id}/get',
-    ...options,
-  })
-}
-
-/**
- * Post React
- */
-export const conversationsApiApiPostReact = <
-  ThrowOnError extends boolean = false,
->(
-  options: Options<ConversationsApiApiPostReactData, ThrowOnError>
-) => {
-  return (options.client ?? _heyApiClient).post<
-    ConversationsApiApiPostReactResponses,
-    ConversationsApiApiPostReactErrors,
-    ThrowOnError
-  >({
-    responseType: 'json',
-    url: '/api/react/{user_id}/{conversation_id}',
+    url: '/api/chat/{conversation_id}/messages',
     ...options,
     headers: {
       'Content-Type': 'application/json',

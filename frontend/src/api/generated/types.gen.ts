@@ -11,6 +11,20 @@ export type ErrorResponse = {
 }
 
 /**
+ * UserPayload
+ */
+export type UserPayload = {
+  /**
+   * Username
+   */
+  username: string
+  /**
+   * Password
+   */
+  password: string
+}
+
+/**
  * User
  */
 export type User = {
@@ -19,9 +33,13 @@ export type User = {
    */
   id: string
   /**
-   * Name
+   * Username
    */
-  name: string
+  username: string
+  /**
+   * Password Hash
+   */
+  password_hash: string
   /**
    * Pseudo
    */
@@ -30,24 +48,24 @@ export type User = {
    * Location
    */
   location?: string | null
-  /**
-   * Is Admin
-   */
-  is_admin?: boolean
 }
 
 /**
- * ConversationMetadata
+ * Conversation
  */
-export type ConversationMetadata = {
+export type Conversation = {
+  /**
+   * Id
+   */
+  id?: string
+  /**
+   * Users Ids
+   */
+  users_ids?: Array<string>
   /**
    * Name
    */
   name?: string
-  /**
-   * Id
-   */
-  id?: string | null
   /**
    * Is Locked
    */
@@ -59,21 +77,25 @@ export type ConversationMetadata = {
  */
 export type Message = {
   /**
+   * Id
+   */
+  id?: string
+  /**
    * Content
    */
   content: string
   /**
+   * Conversation Id
+   */
+  conversation_id: string
+  /**
    * Issuer Id
    */
-  issuer_id?: string | null
-  /**
-   * Id
-   */
-  id?: string | null
+  issuer_id: string
   /**
    * Timestamp
    */
-  timestamp?: string | null
+  timestamp?: string
   /**
    * Reacts
    */
@@ -95,10 +117,10 @@ export type React = {
 }
 
 export type ConversationsApiApiRegisterUserData = {
-  body: User
+  body: UserPayload
   path?: never
   query?: never
-  url: '/api/auth/'
+  url: '/api/register/'
 }
 
 export type ConversationsApiApiRegisterUserErrors = {
@@ -117,23 +139,73 @@ export type ConversationsApiApiRegisterUserResponses = {
    * OK
    */
   200: {
-    [key: string]: string
+    [key: string]: unknown
   }
 }
 
 export type ConversationsApiApiRegisterUserResponse =
   ConversationsApiApiRegisterUserResponses[keyof ConversationsApiApiRegisterUserResponses]
 
-export type ConversationsApiApiCreateConversationData = {
-  body: ConversationMetadata
-  path: {
-    /**
-     * User Id
-     */
-    user_id: string
-  }
+export type ConversationsApiApiLoginData = {
+  body: UserPayload
+  path?: never
   query?: never
-  url: '/api/conversations/{user_id}/create'
+  url: '/api/login/'
+}
+
+export type ConversationsApiApiLoginErrors = {
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse
+}
+
+export type ConversationsApiApiLoginError =
+  ConversationsApiApiLoginErrors[keyof ConversationsApiApiLoginErrors]
+
+export type ConversationsApiApiLoginResponses = {
+  /**
+   * OK
+   */
+  200: User
+}
+
+export type ConversationsApiApiLoginResponse =
+  ConversationsApiApiLoginResponses[keyof ConversationsApiApiLoginResponses]
+
+export type ConversationsApiApiListConversationsData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/api/chat/'
+}
+
+export type ConversationsApiApiListConversationsErrors = {
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse
+}
+
+export type ConversationsApiApiListConversationsError =
+  ConversationsApiApiListConversationsErrors[keyof ConversationsApiApiListConversationsErrors]
+
+export type ConversationsApiApiListConversationsResponses = {
+  /**
+   * Response
+   * OK
+   */
+  200: Array<Conversation>
+}
+
+export type ConversationsApiApiListConversationsResponse =
+  ConversationsApiApiListConversationsResponses[keyof ConversationsApiApiListConversationsResponses]
+
+export type ConversationsApiApiCreateConversationData = {
+  body: Conversation
+  path?: never
+  query?: never
+  url: '/api/chat/'
 }
 
 export type ConversationsApiApiCreateConversationErrors = {
@@ -152,12 +224,9 @@ export type ConversationsApiApiCreateConversationError =
 
 export type ConversationsApiApiCreateConversationResponses = {
   /**
-   * Response
    * OK
    */
-  200: {
-    [key: string]: string
-  }
+  200: Conversation
 }
 
 export type ConversationsApiApiCreateConversationResponse =
@@ -167,17 +236,12 @@ export type ConversationsApiApiJoinConversationData = {
   body?: never
   path: {
     /**
-     * User Id
-     */
-    user_id: string
-  }
-  query: {
-    /**
      * Conversation Id
      */
     conversation_id: string
   }
-  url: '/api/conversations/{user_id}/join'
+  query?: never
+  url: '/api/chat/{conversation_id}/join'
 }
 
 export type ConversationsApiApiJoinConversationErrors = {
@@ -192,31 +256,57 @@ export type ConversationsApiApiJoinConversationError =
 
 export type ConversationsApiApiJoinConversationResponses = {
   /**
-   * Response
    * OK
    */
-  200: {
-    [key: string]: string
-  }
+  200: Conversation
 }
 
 export type ConversationsApiApiJoinConversationResponse =
   ConversationsApiApiJoinConversationResponses[keyof ConversationsApiApiJoinConversationResponses]
 
-export type ConversationsApiApiPostMessageData = {
-  body: Message
+export type ConversationsApiApiGetMessagesData = {
+  body?: never
   path: {
-    /**
-     * User Id
-     */
-    user_id: string
     /**
      * Conversation Id
      */
     conversation_id: string
   }
   query?: never
-  url: '/api/messages/{user_id}/{conversation_id}'
+  url: '/api/chat/{conversation_id}/messages/'
+}
+
+export type ConversationsApiApiGetMessagesErrors = {
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse
+}
+
+export type ConversationsApiApiGetMessagesError =
+  ConversationsApiApiGetMessagesErrors[keyof ConversationsApiApiGetMessagesErrors]
+
+export type ConversationsApiApiGetMessagesResponses = {
+  /**
+   * Response
+   * OK
+   */
+  200: Array<Message>
+}
+
+export type ConversationsApiApiGetMessagesResponse =
+  ConversationsApiApiGetMessagesResponses[keyof ConversationsApiApiGetMessagesResponses]
+
+export type ConversationsApiApiPostMessageData = {
+  body: Message
+  path: {
+    /**
+     * Conversation Id
+     */
+    conversation_id: string
+  }
+  query?: never
+  url: '/api/chat/{conversation_id}/messages/'
 }
 
 export type ConversationsApiApiPostMessageErrors = {
@@ -235,34 +325,59 @@ export type ConversationsApiApiPostMessageError =
 
 export type ConversationsApiApiPostMessageResponses = {
   /**
-   * Response
    * OK
    */
-  200: {
-    [key: string]: string
-  }
+  200: Message
 }
 
 export type ConversationsApiApiPostMessageResponse =
   ConversationsApiApiPostMessageResponses[keyof ConversationsApiApiPostMessageResponses]
 
-export type ConversationsApiApiPostMetadataData = {
-  body: ConversationMetadata
+export type ConversationsApiApiGetConversationData = {
+  body?: never
   path: {
-    /**
-     * User Id
-     */
-    user_id: string
     /**
      * Conversation Id
      */
     conversation_id: string
   }
   query?: never
-  url: '/api/metadata/{user_id}/{conversation_id}'
+  url: '/api/chat/{conversation_id}'
 }
 
-export type ConversationsApiApiPostMetadataErrors = {
+export type ConversationsApiApiGetConversationErrors = {
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse
+}
+
+export type ConversationsApiApiGetConversationError =
+  ConversationsApiApiGetConversationErrors[keyof ConversationsApiApiGetConversationErrors]
+
+export type ConversationsApiApiGetConversationResponses = {
+  /**
+   * OK
+   */
+  200: Conversation
+}
+
+export type ConversationsApiApiGetConversationResponse =
+  ConversationsApiApiGetConversationResponses[keyof ConversationsApiApiGetConversationResponses]
+
+export type ConversationsApiApiPatchConversationData = {
+  body: Conversation
+  path: {
+    /**
+     * Conversation Id
+     */
+    conversation_id: string
+  }
+  query?: never
+  url: '/api/chat/{conversation_id}'
+}
+
+export type ConversationsApiApiPatchConversationErrors = {
   /**
    * Unprocessable Entity
    */
@@ -273,114 +388,24 @@ export type ConversationsApiApiPostMetadataErrors = {
   500: ErrorResponse
 }
 
-export type ConversationsApiApiPostMetadataError =
-  ConversationsApiApiPostMetadataErrors[keyof ConversationsApiApiPostMetadataErrors]
+export type ConversationsApiApiPatchConversationError =
+  ConversationsApiApiPatchConversationErrors[keyof ConversationsApiApiPatchConversationErrors]
 
-export type ConversationsApiApiPostMetadataResponses = {
+export type ConversationsApiApiPatchConversationResponses = {
   /**
-   * Response
    * OK
    */
-  200: {
-    [key: string]: string
-  }
+  200: Conversation
 }
 
-export type ConversationsApiApiPostMetadataResponse =
-  ConversationsApiApiPostMetadataResponses[keyof ConversationsApiApiPostMetadataResponses]
-
-export type ConversationsApiApiGetMessagesData = {
-  body?: never
-  path: {
-    /**
-     * User Id
-     */
-    user_id: string
-    /**
-     * Conversation Id
-     */
-    conversation_id: string
-  }
-  query?: never
-  url: '/api/messages/{user_id}/{conversation_id}/get'
-}
-
-export type ConversationsApiApiGetMessagesErrors = {
-  /**
-   * Internal Server Error
-   */
-  500: ErrorResponse
-}
-
-export type ConversationsApiApiGetMessagesError =
-  ConversationsApiApiGetMessagesErrors[keyof ConversationsApiApiGetMessagesErrors]
-
-export type ConversationsApiApiGetMessagesResponses = {
-  /**
-   * Response
-   * OK
-   */
-  200: {
-    [key: string]: unknown
-  }
-}
-
-export type ConversationsApiApiGetMessagesResponse =
-  ConversationsApiApiGetMessagesResponses[keyof ConversationsApiApiGetMessagesResponses]
-
-export type ConversationsApiApiGetMetadataData = {
-  body?: never
-  path: {
-    /**
-     * User Id
-     */
-    user_id: string
-    /**
-     * Conversation Id
-     */
-    conversation_id: string
-  }
-  query?: never
-  url: '/api/metadata/{user_id}/{conversation_id}/get'
-}
-
-export type ConversationsApiApiGetMetadataErrors = {
-  /**
-   * Internal Server Error
-   */
-  500: ErrorResponse
-}
-
-export type ConversationsApiApiGetMetadataError =
-  ConversationsApiApiGetMetadataErrors[keyof ConversationsApiApiGetMetadataErrors]
-
-export type ConversationsApiApiGetMetadataResponses = {
-  /**
-   * Response
-   * OK
-   */
-  200: {
-    [key: string]: unknown
-  }
-}
-
-export type ConversationsApiApiGetMetadataResponse =
-  ConversationsApiApiGetMetadataResponses[keyof ConversationsApiApiGetMetadataResponses]
+export type ConversationsApiApiPatchConversationResponse =
+  ConversationsApiApiPatchConversationResponses[keyof ConversationsApiApiPatchConversationResponses]
 
 export type ConversationsApiApiGetUsersData = {
   body?: never
-  path: {
-    /**
-     * User Id
-     */
-    user_id: string
-    /**
-     * Conversation Id
-     */
-    conversation_id: string
-  }
+  path?: never
   query?: never
-  url: '/api/users/{user_id}/{conversation_id}/get'
+  url: '/api/users'
 }
 
 export type ConversationsApiApiGetUsersErrors = {
@@ -398,81 +423,35 @@ export type ConversationsApiApiGetUsersResponses = {
    * Response
    * OK
    */
-  200: {
-    [key: string]: unknown
-  }
+  200: Array<User>
 }
 
 export type ConversationsApiApiGetUsersResponse =
   ConversationsApiApiGetUsersResponses[keyof ConversationsApiApiGetUsersResponses]
 
-export type ConversationsApiApiListConversationsData = {
-  body?: never
+export type ConversationsApiApiPatchMessageData = {
+  body: Message
   path: {
-    /**
-     * User Id
-     */
-    user_id: string
-  }
-  query?: never
-  url: '/api/conversations/{user_id}/get'
-}
-
-export type ConversationsApiApiListConversationsErrors = {
-  /**
-   * Internal Server Error
-   */
-  500: ErrorResponse
-}
-
-export type ConversationsApiApiListConversationsError =
-  ConversationsApiApiListConversationsErrors[keyof ConversationsApiApiListConversationsErrors]
-
-export type ConversationsApiApiListConversationsResponses = {
-  /**
-   * Response
-   * OK
-   */
-  200: {
-    [key: string]: unknown
-  }
-}
-
-export type ConversationsApiApiListConversationsResponse =
-  ConversationsApiApiListConversationsResponses[keyof ConversationsApiApiListConversationsResponses]
-
-export type ConversationsApiApiPostReactData = {
-  body: React
-  path: {
-    /**
-     * User Id
-     */
-    user_id: string
     /**
      * Conversation Id
      */
     conversation_id: string
   }
-  query: {
-    /**
-     * Message Id
-     */
-    message_id: string
-  }
-  url: '/api/react/{user_id}/{conversation_id}'
+  query?: never
+  url: '/api/chat/{conversation_id}/messages'
 }
 
-export type ConversationsApiApiPostReactErrors = {
+export type ConversationsApiApiPatchMessageErrors = {
   /**
    * Internal Server Error
    */
   500: ErrorResponse
 }
 
-export type ConversationsApiApiPostReactError =
-  ConversationsApiApiPostReactErrors[keyof ConversationsApiApiPostReactErrors]
+export type ConversationsApiApiPatchMessageError =
+  ConversationsApiApiPatchMessageErrors[keyof ConversationsApiApiPatchMessageErrors]
 
-export type ConversationsApiApiPostReactResponses = {
+export type ConversationsApiApiPatchMessageResponses = {
   /**
    * Response
    * OK
@@ -482,8 +461,8 @@ export type ConversationsApiApiPostReactResponses = {
   }
 }
 
-export type ConversationsApiApiPostReactResponse =
-  ConversationsApiApiPostReactResponses[keyof ConversationsApiApiPostReactResponses]
+export type ConversationsApiApiPatchMessageResponse =
+  ConversationsApiApiPatchMessageResponses[keyof ConversationsApiApiPatchMessageResponses]
 
 export type ClientOptions = {
   baseURL: string
