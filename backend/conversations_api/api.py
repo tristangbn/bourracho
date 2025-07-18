@@ -63,7 +63,7 @@ def login(request, user_credentials: UserPayload):
 
 @api.post("chat/", response={200: Conversation, 422: ErrorResponse, 500: ErrorResponse})
 def create_conversation(request, conversation: Conversation):
-    user_id = request.headers.get("user_id")
+    user_id = request.headers.get("user_id") or request.headers.get("User-Id")
     logger.info("Received request to create conversation.")
     try:
         conversation_id = registry.create_conversation(user_id=user_id, conversation=conversation)
@@ -79,7 +79,7 @@ def create_conversation(request, conversation: Conversation):
 
 @api.post("chat/{conversation_id}/join", response={200: Conversation, 500: ErrorResponse})
 def join_conversation(request, conversation_id: str):
-    user_id = request.headers.get("user_id")
+    user_id = request.headers.get("user_id") or request.headers.get("User-Id")
     try:
         logger.info(f"Received request to join conversation {conversation_id} for user {user_id}.")
         registry.join_conversation(user_id=user_id, conversation_id=conversation_id)
@@ -92,7 +92,7 @@ def join_conversation(request, conversation_id: str):
 
 @api.post("chat/{conversation_id}/messages/", response={200: Message, 422: ErrorResponse, 500: ErrorResponse})
 def post_message(request, conversation_id: str, message: Message):
-    user_id = request.headers.get("user_id")
+    user_id = request.headers.get("user_id") or request.headers.get("User-Id")
     try:
         logger.info(f"Received request to post message {message} to conversation {conversation_id}.")
         message.issuer_id = user_id
@@ -170,7 +170,7 @@ def get_users(request):
 
 @api.get("chat/", response={200: list[Conversation], 500: ErrorResponse})
 def list_conversations(request):
-    user_id = request.headers.get("user_id")
+    user_id = request.headers.get("user_id") or request.headers.get("User-Id")
     try:
         logger.info("Received request to list all conversations.")
         conversations = registry.list_conversations(user_id=user_id)
@@ -187,7 +187,7 @@ def patch_message(request, conversation_id: str, message: Message):
         raise ValueError("Message id is required to update message")
     try:
         logger.info(f"Received request to update message {message} for conversation {conversation_id}.")
-        message.issuer_id = request.headers.get("user_id")
+        message.issuer_id = request.headers.get("user_id") or request.headers.get("User-Id")
         if message.reacts:
             registry.add_react(react=message.reacts[0], message_id=message.id)
             del message.reacts
