@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { ThemeProvider } from '@/components/theme-provider'
+import { Toaster } from '@/components/ui/sonner'
 import AppHeader from '@/components/layout/AppHeader'
 import WelcomeScreen from '@/components/auth/WelcomeScreen'
 import LoginDialog from '@/components/auth/LoginDialog'
@@ -41,6 +42,7 @@ function App() {
             <p>Loading...</p>
           </div>
         </div>
+        <Toaster />
       </ThemeProvider>
     )
   }
@@ -60,6 +62,7 @@ function App() {
           onLoginSuccess={handleLoginSuccess}
         />
       </div>
+      <Toaster />
     </ThemeProvider>
   )
 }
