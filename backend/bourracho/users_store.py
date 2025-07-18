@@ -17,6 +17,7 @@ class UsersStore:
         self.client = MongoClient(config.MONGO_DB_URL, **auth_kgws)
         self.db = self.client[self.db_name]
         self.users_collection = self.db[config.USERS_COLLECTION]
+        logger.info("Successfully initialized Users Store")
 
     def get_new_user(self, username: str, password: str) -> User:
         password_hash = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
@@ -29,6 +30,7 @@ class UsersStore:
             logger.info(f"No user found with username {username}")
             return None
         user = User.model_validate(db_user)
+        logger.info("User found with username {}".format(username))
         if not bcrypt.checkpw(password.encode("utf-8"), user.password_hash.encode("utf-8")):
             logger.info(f"Password check failed for user {username}")
             return None
@@ -38,7 +40,9 @@ class UsersStore:
         matching_usernames = self.users_collection.find_one({"username": user.username})
         if matching_usernames and user.username in matching_usernames:
             raise ValueError("User with username {} already exists".format(user.username))
+        logger.info(f"Adding user with username {user.username} to collection.")
         self.users_collection.insert_one(user.model_dump())
+        logger.info(f"User with username {user.username} added to collection.")
 
     def get_user(self, user_id: str) -> User | None:
         user = self.users_collection.find_one({"id": user_id})
