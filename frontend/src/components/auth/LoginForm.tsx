@@ -15,12 +15,12 @@ interface LoginFormData {
 
 interface LoginFormProps {
   onSubmit: (user: User) => void
-  isLoading?: boolean
+  onSwitchToSignup: () => void
 }
 
 export default function LoginForm({
   onSubmit,
-  isLoading = false,
+  onSwitchToSignup,
 }: LoginFormProps) {
   const [formData, setFormData] = useState<LoginFormData>({
     email: '',
@@ -28,6 +28,7 @@ export default function LoginForm({
   })
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -64,6 +65,9 @@ export default function LoginForm({
 
     if (!validateForm()) return
 
+    setIsLoading(true)
+    setError(null)
+
     try {
       const response = await conversationsApiApiLogin<true>({
         body: {
@@ -76,6 +80,8 @@ export default function LoginForm({
     } catch (error) {
       console.error(error)
       setError('Login failed. Please check your credentials and try again.')
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -135,8 +141,8 @@ export default function LoginForm({
         </div>
       </div>
 
-      <div className="flex justify-center">
-        <Button type="submit" disabled={isLoading} className="w-full sm:w-auto">
+      <div className="flex flex-col gap-3">
+        <Button type="submit" disabled={isLoading} className="w-full">
           {isLoading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -146,6 +152,18 @@ export default function LoginForm({
             'Sign In'
           )}
         </Button>
+
+        <div className="text-center">
+          <Button
+            type="button"
+            variant="link"
+            onClick={onSwitchToSignup}
+            disabled={isLoading}
+            className="text-sm"
+          >
+            Don't have an account? Sign up
+          </Button>
+        </div>
       </div>
     </form>
   )
