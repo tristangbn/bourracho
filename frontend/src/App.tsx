@@ -3,7 +3,6 @@ import { useState, useEffect } from 'react'
 import { client } from '@/api/generated/client.gen'
 import { ThemeProvider } from '@/components/theme-provider'
 import { Toaster } from '@/components/ui/sonner'
-import AppHeader from '@/components/layout/AppHeader'
 import WelcomeScreen from '@/components/auth/WelcomeScreen'
 import LoginDialog from '@/components/auth/LoginDialog'
 import ChatPage from '@/components/chat/ChatPage'
@@ -102,10 +101,8 @@ function App() {
 
   return (
     <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
-      <div className="h-[100svh] bg-background text-foreground">
-        <AppHeader user={user} onLogout={handleLogout} />
-
-        <main className="container mx-auto p-4">
+      <div className="h-[100svh] bg-background text-foreground flex flex-col">
+        <main className="flex-1 min-h-0">
           {currentConversation && user ? (
             <ChatPage
               conversationId={currentConversation.id}
@@ -118,6 +115,7 @@ function App() {
             <WelcomeScreen
               user={user}
               onLogin={() => setShowLogin(true)}
+              onLogout={handleLogout}
               onJoinChat={handleJoinChat}
               onCreateChat={handleCreateChat}
             />
