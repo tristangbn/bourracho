@@ -5,7 +5,7 @@ from loguru import logger
 from ninja import NinjaAPI, Schema
 from pydantic import ValidationError
 
-from bourracho.models import Conversation, Message, User, UserPayload
+from bourracho.models import Conversation, Message, UserPayload
 from bourracho.stores_registry import StoresRegistry
 from conversations_api import config
 
@@ -31,12 +31,7 @@ def register_user(request, user_credentials: UserPayload):
     try:
         user = registry.register_user(username=user_credentials.username, password=user_credentials.password)
         logger.info(f"User registered with id: {user.id}")
-        return 200, UserResponse(
-            id=user.id,
-            username=user.username,
-            pseudo=user.pseudo,
-            location=user.location
-        )
+        return 200, UserResponse(id=user.id, username=user.username, pseudo=user.pseudo, location=user.location)
     except KeyError:
         logger.error(f"User with username {user_credentials.username} already exists")
         return 401, {"error": "User with username {} already exists".format(user_credentials.username)}
@@ -55,12 +50,7 @@ def login(request, user_credentials: UserPayload):
             return 401, {"error": f"Credentials don't match for username {user_credentials.username}"}
         logger.info(f"User with id {user_id} logged in.")
         user = registry.get_user(user_id=user_id)
-        return 200, UserResponse(
-            id=user.id,
-            username=user.username,
-            pseudo=user.pseudo,
-            location=user.location
-        )
+        return 200, UserResponse(id=user.id, username=user.username, pseudo=user.pseudo, location=user.location)
     except ValueError as e:
         return 401, {"error": str(e)}
     except KeyError:
@@ -170,12 +160,8 @@ def get_users(request):
         users = registry.get_users(user_ids=users_ids)
         logger.info(f"Fetched {len(users)} users for user_ids {users_ids}.")
         return 200, [
-            UserResponse(
-                id=user.id,
-                username=user.username,
-                pseudo=user.pseudo,
-                location=user.location
-            ) for user in users
+            UserResponse(id=user.id, username=user.username, pseudo=user.pseudo, location=user.location)
+            for user in users
         ]
     except Exception as e:
         logger.error(f"Error fetching users for user_ids {users_ids}: {e}")

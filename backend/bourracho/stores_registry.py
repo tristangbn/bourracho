@@ -9,6 +9,9 @@ from bourracho.conversations_store import ConversationsStore
 from bourracho.messages_store import MessagesStore
 from bourracho.models import Conversation, Message, React, User
 from bourracho.users_store import UsersStore
+from bourracho.utils import check_db_connection
+
+check_db_connection()
 
 
 class StoresRegistry:
