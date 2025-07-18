@@ -1,4 +1,3 @@
-import md5 from 'blueimp-md5'
 import { LogOut, Palette } from 'lucide-react'
 
 import type { User } from '@/api/generated'
@@ -13,16 +12,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { getGravatarUrl, getUserInitials } from '@/lib/gravatar'
 
 interface AppHeaderProps {
   user: User | null
   onLogout: () => void
-}
-
-function getGravatarUrl(email: string, size: number = 200): string {
-  const normalizedEmail = email.trim().toLowerCase()
-  const hash = md5(normalizedEmail)
-  return `https://www.gravatar.com/avatar/${hash}?s=${size}&d=mp`
 }
 
 export default function AppHeader({ user, onLogout }: AppHeaderProps) {
@@ -58,7 +52,7 @@ export default function AppHeader({ user, onLogout }: AppHeaderProps) {
                     alt={user.username}
                   />
                   <AvatarFallback>
-                    {user.username.substring(0, 2).toUpperCase()}
+                    {getUserInitials(user.username)}
                   </AvatarFallback>
                 </Avatar>
               </Button>

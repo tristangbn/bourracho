@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Send, ArrowLeft, Copy, Check } from 'lucide-react'
+import { Send, ArrowLeft, Copy, Check, ChevronDown } from 'lucide-react'
 import { showToast } from '@/lib/toast'
 import type { User, Message, Conversation } from '@/api/generated'
 import {
@@ -9,6 +9,8 @@ import {
   conversationsApiApiPostMessage,
   conversationsApiApiGetUsers,
 } from '@/api/generated'
+import { getGravatarUrl, getUserInitials } from '@/lib/gravatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 
 interface ChatPageProps {
   conversation: Conversation
@@ -16,6 +18,7 @@ interface ChatPageProps {
   onSendMessage?: (message: string) => void
   onBackToHome: () => void
   messages?: Message[]
+  autoScroll?: boolean
 }
 
 export default function ChatPage({
@@ -24,6 +27,7 @@ export default function ChatPage({
   onSendMessage,
   onBackToHome,
   messages: initialMessages = [],
+  autoScroll = true,
 }: ChatPageProps) {
   const [messageInput, setMessageInput] = useState('')
   const [copied, setCopied] = useState(false)
@@ -36,6 +40,33 @@ export default function ChatPage({
   )
   const [isPolling, setIsPolling] = useState(false)
   const [isUserTyping, setIsUserTyping] = useState(false)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const messagesContainerRef = useRef<HTMLDivElement>(null)
+  const [showScrollButton, setShowScrollButton] = useState(false)
+  const [wasAtBottom, setWasAtBottom] = useState(true)
+
+  const scrollToBottom = () => {
+    if (autoScroll && messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' })
+    }
+  }
+
+  const handleScroll = () => {
+    if (messagesContainerRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } =
+        messagesContainerRef.current
+      const isAtBottom = scrollTop + clientHeight >= scrollHeight - 10
+      setWasAtBottom(isAtBottom)
+      setShowScrollButton(!isAtBottom && !autoScroll)
+    }
+  }
+
+  // Scroll to bottom when messages change, but only if user was at bottom
+  useEffect(() => {
+    if (wasAtBottom) {
+      scrollToBottom()
+    }
+  }, [messages, autoScroll, wasAtBottom])
 
   // Fetch messages when component mounts
   useEffect(() => {
@@ -236,7 +267,11 @@ export default function ChatPage({
       </div>
 
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0">
+      <div
+        className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0 relative"
+        onScroll={handleScroll}
+        ref={messagesContainerRef}
+      >
         {isLoading ? (
           <div className="flex items-center justify-center h-full text-muted-foreground">
             <div className="text-center">
@@ -260,31 +295,60 @@ export default function ChatPage({
               className={`flex ${message.issuer_id === user.id ? 'justify-end' : 'justify-start'}`}
             >
               <div
-                className={`max-w-[70%] rounded-lg px-4 py-2 ${
-                  message.issuer_id === user.id
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-muted'
-                }`}
+                className={`flex items-end gap-2 max-w-[70%] ${message.issuer_id === user.id ? 'flex-row-reverse' : 'flex-row'}`}
               >
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-sm font-medium">
-                    {message.issuer_id === user.id
-                      ? 'You'
-                      : users[message.issuer_id]?.username ||
-                        (Object.keys(users).length > 0
-                          ? 'Unknown User'
-                          : '...')}
-                  </span>
-                  {message.timestamp && (
-                    <span className="text-xs opacity-70">
-                      {formatTime(message.timestamp)}
-                    </span>
-                  )}
+                {/* Avatar - only show for other users, not for current user */}
+                {
+                  <Avatar className="h-6 w-6 flex-shrink-0">
+                    <AvatarImage
+                      src={getGravatarUrl(
+                        users[message.issuer_id]?.username || message.issuer_id,
+                        100
+                      )}
+                      alt={
+                        users[message.issuer_id]?.username || message.issuer_id
+                      }
+                    />
+                    <AvatarFallback className="text-xs">
+                      {getUserInitials(
+                        users[message.issuer_id]?.username || message.issuer_id
+                      )}
+                    </AvatarFallback>
+                  </Avatar>
+                }
+
+                {/* Message Content */}
+                <div
+                  className={`rounded-lg px-4 py-2 ${
+                    message.issuer_id === user.id
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted'
+                  }`}
+                >
+                  <div className="flex items-baseline gap-8">
+                    <p className="text-sm">{message.content}</p>
+                    {message.timestamp && (
+                      <span className="text-xs opacity-30">
+                        {formatTime(message.timestamp)}
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <p className="text-sm">{message.content}</p>
               </div>
             </div>
           ))
+        )}
+        <div ref={messagesEndRef} />
+
+        {/* Scroll to bottom button */}
+        {showScrollButton && (
+          <Button
+            onClick={scrollToBottom}
+            size="sm"
+            className="absolute bottom-4 right-4 rounded-full w-10 h-10 p-0 shadow-lg"
+          >
+            <ChevronDown className="h-4 w-4" />
+          </Button>
         )}
       </div>
 

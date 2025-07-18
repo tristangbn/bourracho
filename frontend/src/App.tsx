@@ -89,6 +89,7 @@ function App() {
               conversation={currentConversation}
               user={user}
               onBackToHome={handleBackToHome}
+              autoScroll={true}
             />
           ) : (
             <WelcomeScreen
