@@ -24,6 +24,9 @@ class UsersStore:
         return user
 
     def check_credentials(self, username: str, password: str) -> str | None:
+        if username not in self.users_collection.find_one({"username": username}):
+            logger.info(f"No user found with username {username}")
+            raise KeyError(f"User with username {username} not found")
         user = User.model_validate(self.users_collection.find_one({"username": username}))
         if not user:
             logger.info(f"No user found with username {username}")
@@ -34,6 +37,8 @@ class UsersStore:
         return user.id
 
     def add_user(self, user: User) -> None:
+        if user.username in self.users_collection.find_one({"username": user.username}):
+            raise ValueError("User with username {} already exists".format(user.username))
         self.users_collection.insert_one(user.model_dump())
 
     def get_user(self, user_id: str) -> User | None:

@@ -25,6 +25,9 @@ def register_user(request, user_credentials: UserPayload) -> User:
         user = registry.register_user(username=user_credentials.username, password=user_credentials.password)
         logger.info(f"User registered with id: {user.id}")
         return 200, registry.get_user(user_id=user.id).model_dump(exclude="password_hash")
+    except KeyError:
+        logger.error(f"User with username {user_credentials.username} already exists")
+        return 401, {"error": "User with username {} already exists".format(user_credentials.username)}
     except Exception as e:
         logger.error(f"Unexpected error during user registration: {e}")
         return 500, {"error": str(e)}
@@ -35,8 +38,16 @@ def login(request, user_credentials: UserPayload):
     logger.info("Received request to login user.")
     try:
         user_id = registry.check_credentials(username=user_credentials.username, password=user_credentials.password)
+        if not user_id:
+            logger.error(f"Credentials don't match for username {user_credentials.username}")
+            raise ValueError(f"Credentials don't match for username {user_credentials}")
         logger.info(f"User with id {user_id} logged in.")
         return 200, registry.get_user(user_id=user_id).model_dump(exclude="password_hash")
+    except ValueError as e:
+        return 401, {"error": e}
+    except KeyError:
+        logger.error(f"Credentials don't match for username {user_credentials.username}")
+        return 401, {"error": f"Username {user_credentials.username} not found in database"}
     except Exception as e:
         logger.error(f"Unexpected error during user login: {e}")
         return 500, {"error": str(e)}
