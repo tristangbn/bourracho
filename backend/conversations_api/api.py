@@ -36,7 +36,7 @@ def login(request, user_credentials: UserPayload):
     try:
         user_id = registry.check_credentials(username=user_credentials.username, password=user_credentials.password)
         logger.info(f"User with id {user_id} logged in.")
-        return 200, registry.get_user(user_id=user_id)
+        return 200, registry.get_user(user_id=user_id).model_dump(exclude="password_hash")
     except Exception as e:
         logger.error(f"Unexpected error during user login: {e}")
         return 500, {"error": str(e)}
@@ -140,7 +140,7 @@ def get_users(request):
     try:
         users = registry.get_users(user_ids=users_ids)
         logger.info(f"Fetched {len(users)} users for user_ids {users_ids}.")
-        return 200, users
+        return 200, [user.model_dump(exclude="password_hash") for user in users]
     except Exception as e:
         logger.error(f"Error fetching users for user_ids {users_ids}: {e}")
         return 500, {"error": str(e)}
